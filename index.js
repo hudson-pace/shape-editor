@@ -138,21 +138,29 @@ const snapLine = (shape, line) => {
 }
 
 const getRotMult = (line, l) => {
-    if (Math.abs(line[0][0] - l[0][0]) > Math.abs(line[1][0] - l[0][0])) {
-        const tmp = line[0];
-        line[0] = line[1];
-        line[1] = tmp;
-    }
+    const l1 = lineUpLines(line, l)[1];
     const dx = line[1][0] - line[0][0];
     const dy = line[1][1] - line[0][1];
 
-    const dx2 = l[1][0] - l[0][0];
-    const dy2 = l[1][1] - l[0][1];
+    const dx2 = l1[1][0] - l1[0][0];
+    const dy2 = l1[1][1] - l1[0][1];
 
-    let ang = Math.atan2(dy, dx) % ( Math.PI / 2);
+    const ang = Math.atan2(dy, dx) % ( Math.PI / 2);
     const ang2 = Math.atan2(dy2, dx2) % (Math.PI / 2);
-    
-    return (ang - ang2);
+
+    let rot = ang - ang2;
+    if (rot < -1 * Math.PI / 4) {
+        rot += Math.PI / 2;
+    } else if (rot > Math.PI / 4) {
+        rot -= Math.PI / 2;
+    }
+    return (rot);
+}
+
+const lineUpLines = (l1, l2) => {
+    const what = distanceBetweenPoints(l1[0], l2[0]) + distanceBetweenPoints(l1[1], l2[1]) 
+        < distanceBetweenPoints(l1[0], l2[1]) + distanceBetweenPoints(l1[1], l2[0]);
+    return what ? [l1, [l2[0], l2[1]]] : [l1, [l2[1], l2[0]]];
 }
 
 const actualDistanceBetweenPoints = (p1, p2) => {
