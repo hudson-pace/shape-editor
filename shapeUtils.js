@@ -1,16 +1,17 @@
 const createShape = (x, y, size, def, rot) => {
-    return {
-        x,
-        y,
-        size,
-        def,
-        path: createPath(x, y, size, def, rot),
-        rot,
+    const shape = {
         highlighted: false,
+        points: [...def],
     }
+
+    const center = getCenterOfShapeGroup([shape]);
+    
+    updatePoints(shape, center, x, y, size, rot);
+    
+    return shape;
 }
-const createPath = (x, y, size, def, rot) => {
-    const realPoints = getRealPoints(x, y, size, def, rot);
+const createPath = (shape) => {
+    const realPoints = shape.points
     const path = new Path2D();
     path.moveTo(realPoints[0][0], realPoints[0][1]);
     realPoints.slice(1).forEach((point) => {
@@ -19,28 +20,17 @@ const createPath = (x, y, size, def, rot) => {
     path.closePath();
     return path;
 }
-const getRealPoints = (x, y, size, def, rot) => {
-    return def.map(([x2, y2]) => {
-        const [x3, y3] = rotatePoint(x2, y2, rot);
-        return [(x3 * size) + x, (y3 * size) + y]
+const updatePoints = (shape, center, dx, dy, size, rot) => {
+    shape.points = shape.points.map((p) => {
+        const [x, y] = rotatePoint(p[0] - center[0], p[1] - center[1], rot);
+        return [(x * size) + center[0] + dx, (y * size) + center[1] + dy];
     });
+    shape.path = createPath(shape);
 }
 const toggleHighlight = (shape) => {
     shape.highlighted = !shape.highlighted;
 }
-const updateShapeLocation = (shape, x, y) => {
-    shape.x = x;
-    shape.y = y;
-    shape.path = createPath(shape.x, shape.y, shape.size, shape.def, shape.rot);
-}
-const updateShapeRotation = (shape, rot) => {
-    shape.rot = rot;
-    shape.path = createPath(shape.x, shape.y, shape.size, shape.def, shape.rot);
-}
-const updateShapeSize = (shape, size) => {
-    shape.size = size;
-    shape.path = createPath(shape.x, shape.y, shape.size, shape.def, shape.rot);
-}
+
 const distanceBetweenPoints = (p1, p2) => {
     return Math.sqrt(Math.pow(p1[0] - p2[0], 2) + Math.pow(p1[1] - p2[1], 2));
 }
@@ -53,15 +43,11 @@ const getDifferenceBetweenLines = (l1, l2) => {
     )
 }
 const findMatchingLine = (shape, shapes, snapTolerance) => {
-    const neighboringShapes = shapes.filter((s) => (s !== shape
-        && Math.abs(s.x - shape.x) - snapTolerance < (s.size + shape.size)
-        && Math.abs(s.y - shape.y) - snapTolerance < (s.size + shape.size)
-        ));
-    if (neighboringShapes.length > 0) {
-        const lines = getLines(shape);
-        for (let i = 0; i < neighboringShapes.length; i++) {
-            const s = neighboringShapes[i];
-            const nLines = getLines(neighboringShapes[i]);
+    const lines = getLines(shape);
+    for (let i = 0; i < shapes.length; i++) {
+        const s = shapes[i];
+        if (s !== shape) {
+            const nLines = getLines(s);
             for (let j = 0; j < lines.length; j++) {
                 const l = lines[j];
                 const match = nLines.find((l2) => (
@@ -101,12 +87,16 @@ const getClosestLine = (shape, line) => {
 const snapLine = (shape, line) => {
     let closestLine = getClosestLine(shape, line);
     const sizeMult = distanceBetweenPoints(line[0], line[1]) / distanceBetweenPoints(closestLine[0], closestLine[1]);
-    updateShapeSize(shape, shape.size * sizeMult);
-    const rotMult = getRotationBetweenLines(line, closestLine);
-    updateShapeRotation(shape, shape.rot + rotMult);
+
+    const center = getCenterOfShapeGroup([shape]);
+    updatePoints(shape, center, 0, 0, sizeMult, 0);
+
+    const rot = getRotationBetweenLines(line, closestLine);
+    updatePoints(shape, center, 0, 0, 1, rot);
 
     closestLine = getClosestLine(shape, line);
-    updateShapeLocation(shape, shape.x + line[0][0] - closestLine[0][0], shape.y + line[0][1] - closestLine[0][1]);
+
+    updatePoints(shape, center, line[0][0] - closestLine[0][0], line[0][1] - closestLine[0][1], 1, 0);
 }
 
 const getRotationBetweenLines = (l1, l2) => {
@@ -146,7 +136,7 @@ const rotatePoint = (x, y, rot) => {
 
 const getLines = (shape) => {
     const lines = [];
-    const points = getRealPoints(shape.x, shape.y, shape.size, shape.def, shape.rot);
+    const points = shape.points
     for (let i = 0; i < points.length; i++) {
         if (i + 1 === points.length) {
             lines.push([points[i], points[0]]);
@@ -165,35 +155,28 @@ const shapeContainsPoint = (context, shape, x, y) => {
 }
 
 const updateShapeGroupLocation = (shapeGroup, dx, dy) => {
+    const center = getCenterOfShapeGroup(shapeGroup);
     shapeGroup.forEach((shape) => {
-        updateShapeLocation(shape, shape.x + dx, shape.y + dy);
+        updatePoints(shape, center, dx, dy, 1, 0);
     });
-    cleanShapeGroup(shapeGroup);
 }
 const updateShapeGroupRotation = (shapeGroup, rotation) => {
+    const center = getCenterOfShapeGroup(shapeGroup);
     shapeGroup.forEach((shape) => {
-        updateShapeRotation(shape, shape.rot + rotation);
-        const center = getCenterOfShapeGroup(shapeGroup);
-        const [x, y] = rotatePoint(shape.x - center[0], shape.y - center[1], rotation);
-        updateShapeLocation(shape, x + center[0], y + center[1]);
+        updatePoints(shape, center, 0, 0, 1, rotation);
     });
-    cleanShapeGroup(shapeGroup);
 }
 const updateShapeGroupSize = (shapeGroup, sizeMultiplier) => {
+    const center = getCenterOfShapeGroup(shapeGroup);
     shapeGroup.forEach((shape) => {
-        updateShapeSize(shape, shape.size * sizeMultiplier);
-        const center = getCenterOfShapeGroup(shapeGroup);
-        const newX = ((shape.x - center[0]) * sizeMultiplier) + center[0];
-        const newY = ((shape.y - center[1]) * sizeMultiplier) + center[1];
-        updateShapeLocation(shape, newX, newY);
+        updatePoints(shape, center, 0, 0, sizeMultiplier, 0);
     });
-    cleanShapeGroup(shapeGroup);
 }
 
 const getCenterOfShapeGroup = (shapeGroup) => {
     let top, right, bottom, left;
     shapeGroup.forEach((shape) => {
-        getRealPoints(shape.x, shape.y, shape.size, shape.def, shape.rot).forEach((point) => {
+        shape.points.forEach((point) => {
             if (top === undefined || point[1] < top) {
                 top = point[1];
             }
@@ -211,26 +194,6 @@ const getCenterOfShapeGroup = (shapeGroup) => {
     return [(right + left) / 2, (bottom + top) / 2];
 }
 
-const cleanShapeGroup = (shapeGroup) => {
-    const snaps = [];
-    shapeGroup.forEach((shape) => {
-        getLines(shape).forEach((line) => {
-            shapeGroup.forEach((s) => {
-                if (s !== shape) {
-                    const l = getClosestLine(s, line);
-                    if (getDifferenceBetweenLines(line, l) < 10) {
-                        snaps.push([s, line]);
-                    }
-                }
-            });
-        });
-    });
-    console.log(snaps.length);
-    snaps.forEach((snap) => {
-        snapLine(snap[0], snap[1]);
-    });
-}
-
 const shapeUtils = {
     updateShapeGroupLocation,
     updateShapeGroupRotation,
@@ -242,7 +205,6 @@ const shapeUtils = {
     moveToFront,
     shapeContainsPoint,
     getClosestLine,
-    getRealPoints,
     findMatchingLine
 }
 

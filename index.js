@@ -20,7 +20,7 @@ const drawShape = (shape) => {
     context.fill(shape.path)
     
     if (showCoords) {
-        const points = shapeUtils.getRealPoints(shape.x, shape.y, shape.size, shape.def, shape.rot);
+        const points = shapeUtils.points;
         context.fillStyle = 'black';
         points.forEach(([x, y]) => {
             context.fillText(`(${Math.floor(x)}, ${Math.floor(y)})`, x, y - 5);
