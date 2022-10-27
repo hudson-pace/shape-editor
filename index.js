@@ -7,6 +7,9 @@ const showCoords = false;
 
 const context = canvas.getContext('2d');
 
+let lineMatch;
+let dragging;
+
 const getLines = (shape) => {
     const lines = [];
     const points = getRealPoints(shape.x, shape.y, shape.width, shape.height, shape.def, shape.rot);
@@ -74,7 +77,9 @@ const createShape = (x, y, width, height, def, rot) => {
 const drawShape = (shape) => {
     context.strokeStyle = shape.highlighted ? 'blue' : 'black';
     context.stroke(shape.path);
-
+    context.fillStyle = 'lightgrey';
+    context.fill(shape.path)
+    
     if (showCoords) {
         const points = getRealPoints(shape.x, shape.y, shape.width, shape.height, shape.def, shape.rot);
         context.fillStyle = 'black';
@@ -102,8 +107,8 @@ const updateShapeSize = (shape, width, height) => {
     shape.path = createPath(shape.x, shape.y, shape.width, shape.height, shape.def, shape.rot);
 }
 
-const snapLine = (shape, line) => {
-    let lines = getLines(shape);
+const getClosestLine = (shape, line) => {
+    const lines = getLines(shape);
     let closestLine = lines[0];
     let min = distanceBetweenLinePoints(closestLine, line);
     for (let i = 1; i < lines.length; i++) {
@@ -113,23 +118,23 @@ const snapLine = (shape, line) => {
             min = dist;
         }
     }
+    return closestLine;
+}
+
+const snapLine = (shape, line) => {
+    let closestLine = getClosestLine(shape, line);
     const sizeMult = actualDistanceBetweenPoints(line[0], line[1]) / actualDistanceBetweenPoints(closestLine[0], closestLine[1]);
     updateShapeSize(shape, shape.width * sizeMult, shape.height * sizeMult);
     const rotMult = getRotMult(line, closestLine);
     updateShapeRotation(shape, shape.rot + rotMult);
 
-
-    lines = getLines(shape);
-    closestLine = lines[0];
-    min = distanceBetweenLinePoints(closestLine, line);
-    for (let i = 1; i < lines.length; i++) {
-        const dist = distanceBetweenLinePoints(lines[i], line);
-        if (dist < min) {
-            closestLine = lines[i];
-            min = dist;
-        }
-    }
-    updateShapeLocation(shape, shape.x + (line[0][0] - closestLine[0][0]), shape.y + (line[0][1] - closestLine[0][1]));
+    closestLine = getClosestLine(shape, line);
+    const d1 = distanceBetweenPoints(line[0], closestLine[0]);
+    const d2 = distanceBetweenPoints(line[0], closestLine[1]);
+    const p3 = d1 < d2 ? closestLine[0] : closestLine[1];
+    const xOffset = Math.min(line[0][0] - closestLine[0][0], line[0][0] - closestLine[1][0]);
+    const yOffset = Math.min(line[0][1] - closestLine[0][1], line[0][1] - closestLine[1][1]);
+    updateShapeLocation(shape, shape.x + line[0][0] - p3[0], shape.y + line[0][1] - p3[1]);
 }
 
 const getRotMult = (line, l) => {
@@ -144,8 +149,8 @@ const getRotMult = (line, l) => {
     const dx2 = l[1][0] - l[0][0];
     const dy2 = l[1][1] - l[0][1];
 
-    const ang = Math.atan2(dy, dx);
-    const ang2 = Math.atan2(dy2, dx2);
+    let ang = Math.atan2(dy, dx) % ( Math.PI / 2);
+    const ang2 = Math.atan2(dy2, dx2) % (Math.PI / 2);
     
     return (ang - ang2);
 }
@@ -194,11 +199,7 @@ const findMatchingLine = (shape, shapes) => {
 
 const shapes = [];
 
-for (let i = 0; i < 10; i++) {
-    shapes.push(createShape(((i+1) * 30), ((i+1) * 30), 30, 30, regularNGon(i + 3), 0))
-}
 
-let lineMatch;
 
 const draw = () => {
     context.fillStyle = 'whitesmoke';
@@ -218,17 +219,23 @@ const draw = () => {
 
     if (lineMatch !== undefined) {
         context.strokeStyle = 'green';
-        // context.lineWidth = 10;
+        context.lineWidth = 2;
         context.beginPath();
         context.moveTo(lineMatch[0][0], lineMatch[0][1]);
         context.lineTo(lineMatch[1][0], lineMatch[1][1]);
         context.stroke();
+        
+        
+        const closestLine = getClosestLine(dragging, lineMatch);
+        context.beginPath();
+        context.moveTo(closestLine[0][0], closestLine[0][1]);
+        context.lineTo(closestLine[1][0], closestLine[1][1]);
+        context.stroke();
+
         context.lineWidth = 1;
     }
 }
 draw();
-
-let dragging;
 
 canvas.addEventListener('mousedown', (e) => {
     const rect = canvas.getBoundingClientRect();
@@ -267,9 +274,9 @@ canvas.addEventListener('wheel', (e) => {
         lineMatch = undefined;
         if (e.buttons === 1) {
             if (e.deltaY < 0) {
-                updateShapeRotation(dragging, dragging.rot + (Math.PI / 8));
+                updateShapeRotation(dragging, dragging.rot + (Math.PI / 16));
             } else {
-                updateShapeRotation(dragging, dragging.rot - (Math.PI / 8));
+                updateShapeRotation(dragging, dragging.rot - (Math.PI / 16));
             }
         } else if (e.buttons === 2) {
             if (e.deltaY < 0) {
@@ -283,4 +290,12 @@ canvas.addEventListener('wheel', (e) => {
 });
 canvas.addEventListener('contextmenu', (e) => {
     e.preventDefault();
+});
+
+window.addEventListener('keydown', (e) => { // not firing on canvas
+    const sides = parseInt(e.key);
+    if (sides !== NaN && sides > 2) {
+        shapes.push(createShape(100, 100, 20, 20, regularNGon(sides), 0));
+        draw();
+    }
 });
