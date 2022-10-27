@@ -164,10 +164,77 @@ const shapeContainsPoint = (context, shape, x, y) => {
     return context.isPointInPath(shape.path, x, y);
 }
 
+const updateShapeGroupLocation = (shapeGroup, dx, dy) => {
+    shapeGroup.forEach((shape) => {
+        updateShapeLocation(shape, shape.x + dx, shape.y + dy);
+    });
+    cleanShapeGroup(shapeGroup);
+}
+const updateShapeGroupRotation = (shapeGroup, rotation) => {
+    shapeGroup.forEach((shape) => {
+        updateShapeRotation(shape, shape.rot + rotation);
+        const center = getCenterOfShapeGroup(shapeGroup);
+        const [x, y] = rotatePoint(shape.x - center[0], shape.y - center[1], rotation);
+        updateShapeLocation(shape, x + center[0], y + center[1]);
+    });
+    cleanShapeGroup(shapeGroup);
+}
+const updateShapeGroupSize = (shapeGroup, sizeMultiplier) => {
+    shapeGroup.forEach((shape) => {
+        updateShapeSize(shape, shape.size * sizeMultiplier);
+        const center = getCenterOfShapeGroup(shapeGroup);
+        const newX = ((shape.x - center[0]) * sizeMultiplier) + center[0];
+        const newY = ((shape.y - center[1]) * sizeMultiplier) + center[1];
+        updateShapeLocation(shape, newX, newY);
+    });
+    cleanShapeGroup(shapeGroup);
+}
+
+const getCenterOfShapeGroup = (shapeGroup) => {
+    let top, right, bottom, left;
+    shapeGroup.forEach((shape) => {
+        getRealPoints(shape.x, shape.y, shape.size, shape.def, shape.rot).forEach((point) => {
+            if (top === undefined || point[1] < top) {
+                top = point[1];
+            }
+            if (right === undefined || point[0] > right) {
+                right = point[0];
+            }
+            if (bottom === undefined || point[1] > bottom) {
+                bottom = point[1];
+            }
+            if (left === undefined || point[0] < left) {
+                left = point[0];
+            }
+        });
+    });
+    return [(right + left) / 2, (bottom + top) / 2];
+}
+
+const cleanShapeGroup = (shapeGroup) => {
+    const snaps = [];
+    shapeGroup.forEach((shape) => {
+        getLines(shape).forEach((line) => {
+            shapeGroup.forEach((s) => {
+                if (s !== shape) {
+                    const l = getClosestLine(s, line);
+                    if (getDifferenceBetweenLines(line, l) < 10) {
+                        snaps.push([s, line]);
+                    }
+                }
+            });
+        });
+    });
+    console.log(snaps.length);
+    snaps.forEach((snap) => {
+        snapLine(snap[0], snap[1]);
+    });
+}
+
 const shapeUtils = {
-    updateShapeLocation,
-    updateShapeRotation,
-    updateShapeSize,
+    updateShapeGroupLocation,
+    updateShapeGroupRotation,
+    updateShapeGroupSize,
     createShape,
     regularNGon,
     snapLine,
