@@ -163,6 +163,12 @@ const lineUpLines = (l1, l2) => {
     return what ? [l1, [l2[0], l2[1]]] : [l1, [l2[1], l2[0]]];
 }
 
+const moveToFront = (shape, shapes) => {
+    const i = shapes.findIndex((s) => s === shape);
+    shapes.splice(i, 1);
+    shapes.push(shape);
+}
+
 const actualDistanceBetweenPoints = (p1, p2) => {
     return Math.sqrt(Math.pow(p1[0] - p2[0], 2) + Math.pow(p1[1] - p2[1], 2));
 }
@@ -249,7 +255,13 @@ canvas.addEventListener('mousedown', (e) => {
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    dragging = shapes.find((shape) => shapeContainsPoint(shape, x, y));
+    for (let i = shapes.length - 1; i >= 0; i--) {
+        if (shapeContainsPoint(shapes[i], x, y)) {
+            dragging = shapes[i];
+            moveToFront(dragging, shapes);
+            break;
+        }
+    }
     if (dragging !== undefined) {
         toggleHighlight(dragging);
         draw();
