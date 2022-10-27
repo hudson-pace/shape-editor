@@ -41,16 +41,12 @@ const updateShapeSize = (shape, size) => {
     shape.size = size;
     shape.path = createPath(shape.x, shape.y, shape.size, shape.def, shape.rot);
 }
-const actualDistanceBetweenPoints = (p1, p2) => {
+const distanceBetweenPoints = (p1, p2) => {
     return Math.sqrt(Math.pow(p1[0] - p2[0], 2) + Math.pow(p1[1] - p2[1], 2));
 }
 
-const distanceBetweenPoints = (p1, p2) => {
-    const dist = (Math.abs(p1[0] - p2[0]) + Math.abs(p1[1] - p2[1]));
-    return dist;
-}
 
-const distanceBetweenLinePoints = (l1, l2) => {
+const getDifferenceBetweenLines = (l1, l2) => {
     return Math.min(
         distanceBetweenPoints(l1[0], l2[0]) + distanceBetweenPoints(l1[1], l2[1]),
         distanceBetweenPoints(l1[0], l2[1]) + distanceBetweenPoints(l1[1], l2[0]),
@@ -82,12 +78,6 @@ const findMatchingLine = (shape, shapes, snapTolerance) => {
     }
 }
 
-const lineUpLines = (l1, l2) => {
-    const what = distanceBetweenPoints(l1[0], l2[0]) + distanceBetweenPoints(l1[1], l2[1]) 
-        < distanceBetweenPoints(l1[0], l2[1]) + distanceBetweenPoints(l1[1], l2[0]);
-    return what ? [l1, [l2[0], l2[1]]] : [l1, [l2[1], l2[0]]];
-}
-
 const moveToFront = (shape, shapes) => {
     const i = shapes.findIndex((s) => s === shape);
     shapes.splice(i, 1);
@@ -97,9 +87,9 @@ const moveToFront = (shape, shapes) => {
 const getClosestLine = (shape, line) => {
     const lines = getLines(shape);
     let closestLine = lines[0];
-    let min = distanceBetweenLinePoints(closestLine, line);
+    let min = getDifferenceBetweenLines(closestLine, line);
     for (let i = 1; i < lines.length; i++) {
-        const dist = distanceBetweenLinePoints(lines[i], line);
+        const dist = getDifferenceBetweenLines(lines[i], line);
         if (dist < min) {
             closestLine = lines[i];
             min = dist;
@@ -110,39 +100,32 @@ const getClosestLine = (shape, line) => {
 
 const snapLine = (shape, line) => {
     let closestLine = getClosestLine(shape, line);
-    const sizeMult = actualDistanceBetweenPoints(line[0], line[1]) / actualDistanceBetweenPoints(closestLine[0], closestLine[1]);
+    const sizeMult = distanceBetweenPoints(line[0], line[1]) / distanceBetweenPoints(closestLine[0], closestLine[1]);
     updateShapeSize(shape, shape.size * sizeMult);
-    const rotMult = getRotMult(line, closestLine);
+    const rotMult = getRotationBetweenLines(line, closestLine);
     updateShapeRotation(shape, shape.rot + rotMult);
 
     closestLine = getClosestLine(shape, line);
-    const d1 = distanceBetweenPoints(line[0], closestLine[0]);
-    const d2 = distanceBetweenPoints(line[0], closestLine[1]);
-    const p3 = d1 < d2 ? closestLine[0] : closestLine[1];
-    const xOffset = Math.min(line[0][0] - closestLine[0][0], line[0][0] - closestLine[1][0]);
-    const yOffset = Math.min(line[0][1] - closestLine[0][1], line[0][1] - closestLine[1][1]);
-    updateShapeLocation(shape, shape.x + line[0][0] - p3[0], shape.y + line[0][1] - p3[1]);
+    updateShapeLocation(shape, shape.x + line[0][0] - closestLine[0][0], shape.y + line[0][1] - closestLine[0][1]);
 }
 
-const getRotMult = (line, l) => {
-    const l1 = lineUpLines(line, l)[1];
-    const dx = line[1][0] - line[0][0];
-    const dy = line[1][1] - line[0][1];
+const getRotationBetweenLines = (l1, l2) => {
+    const dx = l1[1][0] - l1[0][0];
+    const dy = l1[1][1] - l1[0][1];
 
-    const dx2 = l1[1][0] - l1[0][0];
-    const dy2 = l1[1][1] - l1[0][1];
+    const dx2 = l2[1][0] - l2[0][0];
+    const dy2 = l2[1][1] - l2[0][1];
 
-    const ang = Math.atan2(dy, dx) % ( Math.PI / 2);
-    const ang2 = Math.atan2(dy2, dx2) % (Math.PI / 2);
+    let rotationAngle = (Math.atan2(dy, dx) - Math.atan2(dy2, dx2)) % (Math.PI / 2);
 
-    let rot = ang - ang2;
-    if (rot < -1 * Math.PI / 4) {
-        rot += Math.PI / 2;
-    } else if (rot > Math.PI / 4) {
-        rot -= Math.PI / 2;
+    if (rotationAngle < -1 * Math.PI / 4) {
+        rotationAngle += Math.PI / 2;
+    } else if (rotationAngle > Math.PI / 4) {
+        rotationAngle -= Math.PI / 2;
     }
-    return (rot);
+    return rotationAngle;
 }
+
 const regularNGon = (n) => {
     const def = [];
     for (let i = 0; i < n; i++) {
@@ -171,6 +154,9 @@ const getLines = (shape) => {
             lines.push([points[i], points[i + 1]]);
         }
     }
+    lines.forEach((line) => {
+        line.sort((p1, p2) => p1[0] < p2[0] || p1[0] === p2[0] && p1[1] < p2[1] ? -1 : 1);
+    });
     return lines;
 }
 
