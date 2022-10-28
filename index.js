@@ -13,6 +13,10 @@ let lineMatch;
 let dragging;
 let selection = [];
 
+let draggingBox;
+let boxStart;
+let boxEnd;
+
 const drawShape = (shape) => {
     context.strokeStyle = shape.highlighted ? 'blue' : 'black';
     context.stroke(shape.path);
@@ -42,6 +46,18 @@ const draw = () => {
     context.closePath();
     context.stroke();
 
+    if (draggingBox) {
+        context.fillStyle = 'rgba(0, 0, 255, 0.1)';
+        context.fillRect(boxStart[0], boxStart[1], boxEnd[0] - boxStart[0], boxEnd[1] - boxStart[1]);
+        context.strokeStyle = 'rgba(0, 0, 255, 0.3)';
+        context.moveTo(boxStart[0], boxStart[1]);
+        context.lineTo(boxEnd[0], boxStart[1]);
+        context.lineTo(boxEnd[0], boxEnd[1]);
+        context.lineTo(boxStart[0], boxEnd[1]);
+        context.lineTo(boxStart[0], boxStart[1]);
+        context.stroke();
+    }
+
     shapes.forEach((shape) => {
         drawShape(shape);
     });
@@ -68,6 +84,8 @@ draw();
 
 let prevX;
 let prevY;
+
+
 
 canvas.addEventListener('mousedown', (e) => {
     const rect = canvas.getBoundingClientRect();
@@ -107,6 +125,10 @@ canvas.addEventListener('mousedown', (e) => {
             shapeUtils.toggleHighlight(s);
         });
         selection = [];
+        draggingBox = true;
+        dragging = true;
+        boxStart = [x, y];
+        boxEnd = [x, y];
         draw();
     }
 });
@@ -121,8 +143,34 @@ canvas.addEventListener('mousemove', (e) => {
     prevY = y;
 
     if (dragging) {
-        shapeUtils.updateShapeGroupLocation(selection, dx, dy);
-        lineMatch = shapeUtils.findMatchingLine(selection[0], shapes, snapTolerance);
+        if (draggingBox) {
+            boxEnd = [x, y];
+            selection.forEach((s) => {
+                shapeUtils.toggleHighlight(s);
+            });
+            selection = [];
+            const path = new Path2D();
+            path.moveTo(boxStart[0], boxStart[1]);
+            path.lineTo(boxEnd[0], boxStart[1]);
+            path.lineTo(boxEnd[0], boxEnd[1]);
+            path.lineTo(boxStart[0], boxEnd[1]);
+            path.lineTo(boxStart[0], boxStart[1]);
+            shapes.forEach((s) => {
+                for (let i = 0; i < s.points.length; i++) {
+                    const point = s.points[i];
+                    if (context.isPointInPath(path, point[0], point[1])) {
+                        selection.push(s);
+                        return;
+                    }
+                }
+            });
+            selection.forEach((s) => {
+                shapeUtils.toggleHighlight(s);
+            });
+        } else {
+            shapeUtils.updateShapeGroupLocation(selection, dx, dy);
+            lineMatch = shapeUtils.findMatchingLine(selection[0], shapes, snapTolerance);
+        }
         draw();
     }
 });
@@ -131,7 +179,8 @@ canvas.addEventListener('mouseup', () => {
         if (lineMatch !== undefined) {
             shapeUtils.snapLine(selection[0], lineMatch);
         }
-        dragging = false
+        dragging = false;
+        draggingBox = false;
         lineMatch = undefined;
         draw();
     }
