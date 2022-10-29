@@ -215,4 +215,7 @@ window.addEventListener('keydown', (e) => { // not firing on canvas
         shapes.push(shapeUtils.createShape(100, 100, 20, shapeUtils.regularNGon(sides), 0));
         draw();
     }
+    if (e.key === 'c') {
+        shapeUtils.getPerimeterPathOfShapeGroup(context, selection);
+    }
 });

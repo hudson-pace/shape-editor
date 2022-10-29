@@ -43,11 +43,11 @@ const getDifferenceBetweenLines = (l1, l2) => {
     )
 }
 const findMatchingLine = (shape, shapes, snapTolerance) => {
-    const lines = getLines(shape);
+    const lines = getLines(shape, true);
     for (let i = 0; i < shapes.length; i++) {
         const s = shapes[i];
         if (s !== shape) {
-            const nLines = getLines(s);
+            const nLines = getLines(s, true);
             for (let j = 0; j < lines.length; j++) {
                 const l = lines[j];
                 const match = nLines.find((l2) => (
@@ -71,7 +71,7 @@ const moveToFront = (shape, shapes) => {
 }
 
 const getClosestLine = (shape, line) => {
-    const lines = getLines(shape);
+    const lines = getLines(shape, true);
     let closestLine = lines[0];
     let min = getDifferenceBetweenLines(closestLine, line);
     for (let i = 1; i < lines.length; i++) {
@@ -134,14 +134,29 @@ const rotatePoint = (x, y, rot) => {
     ]
 }
 
-const getLines = (shape) => {
+const getLineMidPoint = (l) => {
+    return [
+        (l[0][0] + l[1][0]) / 2,
+        (l[0][1] + l[1][1]) / 2,
+    ];
+}
+
+const getLines = (shape, subsections = false) => {
     const lines = [];
     const points = shape.points
     for (let i = 0; i < points.length; i++) {
+        let line;
         if (i + 1 === points.length) {
-            lines.push([points[i], points[0]]);
+            line = [points[i], points[0]];
         } else {
-            lines.push([points[i], points[i + 1]]);
+            line = [points[i], points[i + 1]];
+        }
+        lines.push(line);
+
+        if (subsections) {
+            const midPoint = getLineMidPoint(line);
+            lines.push([line[0], midPoint]);
+            lines.push([midPoint, line[1]]);
         }
     }
     lines.forEach((line) => {
@@ -194,6 +209,100 @@ const getCenterOfShapeGroup = (shapeGroup) => {
     return [(right + left) / 2, (bottom + top) / 2];
 }
 
+
+const tolerance = 5;
+const compareLines = (l1, l2) => {
+    return getDifferenceBetweenLines(l1, l2) < tolerance;
+}
+
+const getSlope = (l) => {
+    if (l[0][0] === l[1][0]) {
+        return -1;
+    }
+    return (l[1][1] - l[0][1]) / (l[1][0] - l[0][0]);
+}
+
+const isPointInLine = (p, l) => {
+    return (
+        Math.abs(getSlope(l) - getSlope([l[0], p])) < tolerance
+        && p[0] > l[0][0]
+        && p[0] < l[1][0]
+        && Math.abs(p[1] - (l[0][1] + (getSlope(l) * (p[0] - l[0][0])))) < tolerance
+        && distanceBetweenPoints(p, l[0]) > tolerance
+        && distanceBetweenPoints(p, l[1]) > tolerance
+    )
+}
+
+const getPerimeterPathOfShapeGroup = (context, shapeGroup) => {
+    const path = new Path2D();
+    const perimeterPoints = getPerimeterPointsInShapeGroup(context, shapeGroup);
+    context.strokeStyle = 'red';
+    context.lineWidth = 4;
+    perimeterPoints.forEach((l) => {
+        context.moveTo(l[0][0], l[0][1]);
+        context.lineTo(l[1][0], l[1][1]);
+        context.stroke();
+    });
+    context.lineWidth = 1;
+}
+const getPerimeterPointsInShapeGroup = (context, shapeGroup) => {
+    const lines = [];
+    const points = [];
+    shapeGroup.forEach((shape) => {
+        lines.push(...getLines(shape));
+        points.push(...shape.points);
+    });
+
+    const uniquePoints = [];
+
+    points.forEach((p) => {
+        if (!uniquePoints.find((p2) => distanceBetweenPoints(p, p2) < tolerance)) {
+            uniquePoints.push(p);
+        }
+    });
+
+    const uniqueLines = [];
+    const repeatedLines = [];
+
+    lines.forEach((l) => {
+        if (!repeatedLines.find((l2) => compareLines(l, l2))) {
+            const index = uniqueLines.findIndex((l2) => compareLines(l, l2));
+            if (index === -1) {
+                uniqueLines.push(l);
+            } else {
+                uniqueLines.splice(index, 1);
+                repeatedLines.push(l);
+            }
+        }
+    });
+
+    for (let i = 0; i < uniqueLines.length; i++) {
+        const l = uniqueLines[i];
+        for (let j = 0; j < uniquePoints.length; j++) {
+            const p = uniquePoints[j];
+            if (isPointInLine(p, l)) {
+                uniqueLines.splice(i, 1);
+                i--;
+
+                [[l[0], p], [p, l[1]]].forEach((l1) => {
+                    if (!repeatedLines.find((l2) => compareLines(l1, l2))) {
+                        const index = uniqueLines.findIndex((l2) => compareLines(l1, l2));
+                        if (index === -1) {
+                            uniqueLines.push(l1);
+                        } else {
+                            uniqueLines.splice(index, 1);
+                            repeatedLines.push(l1);
+                        }
+                    }
+                });
+            }
+        }
+    }
+    console.log(`${lines.length} vs ${uniqueLines.length}`)
+
+    return uniqueLines;
+}
+
 const shapeUtils = {
     updateShapeGroupLocation,
     updateShapeGroupRotation,
@@ -205,7 +314,8 @@ const shapeUtils = {
     moveToFront,
     shapeContainsPoint,
     getClosestLine,
-    findMatchingLine
+    findMatchingLine,
+    getPerimeterPathOfShapeGroup,
 }
 
 export default shapeUtils;
