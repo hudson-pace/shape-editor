@@ -48,17 +48,8 @@ const createShape = (x, y, size, def, rot) => {
     return shape;
 }
 
-const addToShape = (shape, newShape) => {
-    if (newShape.subShapes.length > 1) {
-        console.log('unsupported');
-        return;
-    }
-
-}
-
 const createPath = (shape) => {
     const lines = shape.lines;
-    console.log(lines);
     const path = new Path2D();
 
     let chainBeginning;
@@ -69,23 +60,19 @@ const createPath = (shape) => {
             chainBeginning = line;
             path.moveTo(line[0][0], line[0][1]);
             path.lineTo(line[1][0], line[1][1]);
-            console.log('1');
         } else {
             if (line[0] !== previous[1]) {
                 path.lineTo(chainBeginning[0][0], chainBeginning[0][1]);
                 chainBeginning = line;
                 path.moveTo(line[0][0], line[0][1]);
                 path.lineTo(line[1][0], line[1][1]);
-                console.log('2');
             } else {
                 path.lineTo(line[1][0], line[1][1]);
-                console.log('1');
             }
         }
         previous = line;
     }
     path.closePath();
-    console.log('1');
     return path;
 }
 const updatePoints = (shape, center, dx, dy, size, rot) => {
@@ -181,7 +168,6 @@ const snapLine = (lineMatch) => {
     outerShape.points.push(...newPointsS);
     outerShape.lines.push(...shape.lines);
     reduceLinesToPerimeter(outerShape);
-    console.log(outerShape.lines);
     outerShape.path = createPath(outerShape);
     shape.path = createPath(shape);
 }
