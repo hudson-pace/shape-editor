@@ -4,7 +4,7 @@ const canvas = document.querySelector('#container');
 canvas.width = 1500;
 canvas.height = 600;
 
-const snapTolerance = 15;
+const snapTolerance = 30;
 const showCoords = false;
 
 const context = canvas.getContext('2d');
@@ -18,10 +18,24 @@ let boxStart;
 let boxEnd;
 
 const drawShape = (shape) => {
-    context.strokeStyle = shape.highlighted ? 'blue' : 'black';
-    context.stroke(shape.path);
     context.fillStyle = 'lightgrey';
     context.fill(shape.path)
+
+    context.beginPath();
+    context.strokeStyle = 'grey';
+    context.lineWidth = 1;
+    shape.subShapes.forEach((s) => {
+        s.lines.forEach((l) => {
+            context.moveTo(l[0][0], l[0][1]);
+            context.lineTo(l[1][0], l[1][1]);
+        });
+    });
+    context.stroke();
+    context.lineWidth = 2;
+    context.strokeStyle = shape.highlighted ? 'blue' : 'black';
+    context.stroke(shape.path);
+    
+    
     
     if (showCoords) {
         const points = shapeUtils.points;
@@ -62,22 +76,21 @@ const draw = () => {
         drawShape(shape);
     });
 
+    context.strokeStyle = 'grey';
+    context.lineWidth = 2;
+    context.fillStyle = 'black';
     if (lineMatch !== undefined) {
-        context.strokeStyle = 'green';
-        context.lineWidth = 2;
-        context.beginPath();
-        context.moveTo(lineMatch[0][0], lineMatch[0][1]);
-        context.lineTo(lineMatch[1][0], lineMatch[1][1]);
-        context.stroke();
-        
-        
-        const closestLine = shapeUtils.getClosestLine(selection[0], lineMatch);
-        context.beginPath();
-        context.moveTo(closestLine[0][0], closestLine[0][1]);
-        context.lineTo(closestLine[1][0], closestLine[1][1]);
-        context.stroke();
-
-        context.lineWidth = 1;
+        lineMatch.matchingPoints.forEach((pair) => {
+            context.beginPath();
+            context.moveTo(pair[0][0], pair[0][1]);
+            context.lineTo(pair[1][0], pair[1][1]);
+            context.stroke();
+            pair.forEach((point) => {
+                context.beginPath();
+                context.arc(point[0], point[1], 2, 0, Math.PI * 2);
+                context.fill();
+            });
+        });
     }
 }
 draw();
@@ -169,7 +182,17 @@ canvas.addEventListener('mousemove', (e) => {
             });
         } else {
             shapeUtils.updateShapeGroupLocation(selection, dx, dy);
-            lineMatch = shapeUtils.findMatchingLine(selection[0], shapes, snapTolerance);
+            for (let i = 0; i < shapes.length; i++) {
+                const shape = shapes[i];
+                if (shape !== selection[0]) {
+                    lineMatch = shapeUtils.findMatchingLine(selection[0], shape, snapTolerance);
+                    if (lineMatch.matchingPoints.length > 0) {
+                        break;
+                    } else {
+                        lineMatch = undefined;
+                    }
+                }
+            }
         }
         draw();
     }
@@ -177,7 +200,9 @@ canvas.addEventListener('mousemove', (e) => {
 canvas.addEventListener('mouseup', () => {
     if (dragging) {
         if (lineMatch !== undefined) {
-            shapeUtils.snapLine(selection[0], lineMatch);
+            shapeUtils.snapLine(lineMatch);
+            const index = shapes.findIndex(((s) => s === lineMatch.shapes[0]));
+            shapes.splice(index, 1);
         }
         dragging = false;
         draggingBox = false;
@@ -214,8 +239,5 @@ window.addEventListener('keydown', (e) => { // not firing on canvas
     if (sides !== NaN && sides > 2) {
         shapes.push(shapeUtils.createShape(100, 100, 20, shapeUtils.regularNGon(sides), 0));
         draw();
-    }
-    if (e.key === 'c') {
-        shapeUtils.getPerimeterPathOfShapeGroup(context, selection);
     }
 });
