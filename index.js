@@ -118,15 +118,26 @@ canvas.addEventListener('mousedown', (e) => {
                     shapeUtils.toggleHighlight(shape);
                 }
             } else {
-                if (e.shiftKey) {
-                    selection.push(shape);
-                    shapeUtils.toggleHighlight(shape);
+                if (e.ctrlKey) {
+                    const subShape = shapeUtils.getSubShape(context, shape, x, y);
+                    if (subShape !== undefined && shape !== undefined && shape.subShapes.length > 1) {
+                        shapeUtils.removeSubShape(shape, subShape);
+                        shapes.push(subShape);
+                        selection.forEach((s) => shapeUtils.toggleHighlight(s));
+                        selection = [];
+                        dragging = false;
+                    }
                 } else {
-                    selection.forEach((s) => {
-                        shapeUtils.toggleHighlight(s);
-                    });
-                    selection = [shape];
-                    shapeUtils.toggleHighlight(shape);
+                    if (e.shiftKey) {
+                        selection.push(shape);
+                        shapeUtils.toggleHighlight(shape);
+                    } else {
+                        selection.forEach((s) => {
+                            shapeUtils.toggleHighlight(s);
+                        });
+                        selection = [shape];
+                        shapeUtils.toggleHighlight(shape);
+                    }
                 }
             }
             draw();
@@ -184,7 +195,7 @@ canvas.addEventListener('mousemove', (e) => {
             shapeUtils.updateShapeGroupLocation(selection, dx, dy);
             for (let i = 0; i < shapes.length; i++) {
                 const shape = shapes[i];
-                if (shape !== selection[0]) {
+                if (shape !== selection[0] && selection[0] !== undefined) {
                     lineMatch = shapeUtils.findMatchingLine(selection[0], shape, snapTolerance);
                     if (lineMatch.matchingPoints.length > 0) {
                         break;

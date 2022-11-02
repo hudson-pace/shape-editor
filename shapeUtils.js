@@ -36,7 +36,8 @@ const createShape = (x, y, size, def, rot) => {
         points,
         lines,
         subShapes: [{
-            points, lines
+            points: [...points],
+            lines: [...lines]
         }],
     }
     reduceLinesToPerimeter(shape);
@@ -153,6 +154,7 @@ const snapLine = (lineMatch) => {
 
     const newPointsS = [];
     const outerShape = lineMatch.shapes[1];
+    
     shape.points.forEach((point, i) => {
         const index = outerShape.points.findIndex((p) => distanceBetweenPoints(point, p) < tolerance);
         if (index !== -1) {
@@ -163,13 +165,58 @@ const snapLine = (lineMatch) => {
     });
     
     shape.lines = getLines(shape);
-
-    outerShape.subShapes.push({ points: shape.points, lines: shape.lines });
+    outerShape.subShapes.push(shape);
     outerShape.points.push(...newPointsS);
     outerShape.lines.push(...shape.lines);
     reduceLinesToPerimeter(outerShape);
+    
     outerShape.path = createPath(outerShape);
     shape.path = createPath(shape);
+}
+
+const removeSubShape = (shape, subShape) => {
+    if (shape === undefined || subShape === undefined) {
+        return;
+    }
+    const index = shape.subShapes.findIndex((s) => s === subShape);
+    if (index !== -1) {
+        shape.subShapes.splice(index, 1);
+        const uniquePoints = subShape.points.filter((p) => !shape.subShapes.find((s) => s.points.includes(p)));
+        shape.points = shape.points.filter((p) => !uniquePoints.includes(p));
+        const uniqueLines = subShape.lines.filter((l) => !shape.subShapes.find((s) => s.points.includes(l[0] && s.points.includes(l[1]))))
+        shape.lines = shape.lines.filter((l) => !uniqueLines.includes(l));
+
+        for (let i = 0; i < subShape.points.length; i++) {
+            const oldPoint = subShape.points[i];
+            const newPoint = { ...oldPoint };
+            subShape.points[i] = newPoint;
+            for (let j = 0; j < subShape.lines.length; j++) {
+                let line = subShape.lines[j];
+                if (line[0] === oldPoint) {
+                    line = [newPoint, line[1]];
+                }
+                if (line[1] === oldPoint) {
+                    line = [line[0], newPoint];
+                }
+            }
+        }
+        shape.lines = getLines(shape);
+        reduceLinesToPerimeter(shape);
+        subShape.subShapes = [];
+        subShape.lines = getLines(subShape);
+        reduceLinesToPerimeter(subShape);
+        shape.path = createPath(shape);
+        subShape.path = createPath(subShape);
+    }
+}
+
+const getSubShape = (context, shape, x, y) => {
+    shape.subShapes.forEach((ss) => {
+        reduceLinesToPerimeter(ss);
+    });
+    return shape.subShapes.find((s) => {
+        return context.isPointInPath(createPath(s), x, y);
+    });
 }
 
 const getRotationBetweenLines = (l1, l2) => {
@@ -367,6 +414,8 @@ const shapeUtils = {
     moveToFront,
     shapeContainsPoint,
     findMatchingLine,
+    removeSubShape,
+    getSubShape,
 }
 
 export default shapeUtils;
