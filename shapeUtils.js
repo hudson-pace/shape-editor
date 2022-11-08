@@ -28,14 +28,12 @@ const createShape = (x, y, size, def, rot) => {
 
     const shape = {
         highlighted: false,
-        points,
-        lines,
         subShapes: [{
             points: [...points],
             lines: [...lines]
         }],
     }
-    reduceLinesToPerimeter(shape);
+    recalculatePointsAndLines(shape);
 
     const center = getCenterOfShapeGroup([shape]);
     
@@ -105,6 +103,21 @@ const getUniquePointPairsFromLinePairs = (linePairs) => {
     return pointPairs;
 }
 
+const findPoiintMatches = (shape, shape2, snapTolerance) => {
+    const matchingPoints = [];
+    for (let i = 0; i < shape.points.length; i++) {
+        const p1 = shape.points[i];
+        const p2 = shape2.points.find((p) => distanceBetweenPoints(p, p2) < snapTolerance);
+        if (p2) {
+            matchingPoints.push([p1, p2]);
+        }
+    }
+    return {
+        shapes: [shape, shape2],
+        matchingPoints,
+    }
+}
+
 const findMatchingLine = (shape, shape2, snapTolerance) => {
     const matchingLines = [];
     for (let i = 0; i < shape.lines.length; i++) {
@@ -147,26 +160,19 @@ const snapLine = (lineMatch) => {
 
     updatePoints(shape, center, l1[0][0] - l2[0][0], l1[0][1] - l2[0][1], 1, 0);
 
-    const newPointsS = [];
     const outerShape = lineMatch.shapes[1];
-    
-    shape.points.forEach((point, i) => {
-        const index = outerShape.points.findIndex((p) => distanceBetweenPoints(point, p) < tolerance);
-        if (index !== -1) {
-            shape.points[i] = outerShape.points[index];
-        } else {
-            newPointsS.push(point);
-        }
+
+    shape.subShapes.forEach((subShape) => {
+        subShape.points.forEach((point, i) => {
+            const index = outerShape.points.findIndex((p) => distanceBetweenPoints(point, p) < tolerance);
+            if (index !== -1) {
+                subShape.points[i] = outerShape.points[index];
+            }
+        });
+        subShape.lines = createLinesFromPoints(subShape.points);
     });
-    
-    shape.lines = getLinesFromPoints(shape.points);
-    outerShape.subShapes.push(shape);
-    outerShape.points.push(...newPointsS);
-    outerShape.lines.push(...shape.lines);
-    reduceLinesToPerimeter(outerShape);
-    
-    outerShape.path = createPath(outerShape);
-    shape.path = createPath(shape);
+    outerShape.subShapes.push(...shape.subShapes);
+    recalculatePointsAndLines(outerShape);
 }
 
 const recalculatePointsAndLines = (shape) => {
@@ -179,9 +185,7 @@ const recalculatePointsAndLines = (shape) => {
             }
         });
         s.lines.forEach((l) => {
-            if (!lines.includes[l]) {
-                lines.push(l);
-            }
+           lines.push(l);
         });
     });
     shape.points = points;
@@ -201,7 +205,7 @@ const removeSubShape = (shape, subShape) => {
         const points = subShape.points.map((p) => {
             return { ...p };
         });
-        const lines = getLinesFromPoints(points);
+        const lines = createLinesFromPoints(points);
         subShape.subShapes = [{ points, lines }];
 
         recalculatePointsAndLines(shape);
@@ -210,9 +214,6 @@ const removeSubShape = (shape, subShape) => {
 }
 
 const getSubShape = (context, shape, x, y) => {
-    shape.subShapes.forEach((ss) => {
-        reduceLinesToPerimeter(ss);
-    });
     return shape.subShapes.find((s) => {
         return context.isPointInPath(createPath(s), x, y);
     });
@@ -258,29 +259,6 @@ const getLineMidPoint = (l) => {
         (l[0][0] + l[1][0]) / 2,
         (l[0][1] + l[1][1]) / 2,
     ];
-}
-
-const getLinesFromPoints = (points, subsections = false) => {
-    const lines = [];
-    for (let i = 0; i < points.length; i++) {
-        let line;
-        if (i + 1 === points.length) {
-            line = [points[i], points[0]];
-        } else {
-            line = [points[i], points[i + 1]];
-        }
-        lines.push(line);
-
-        if (subsections) {
-            const midPoint = getLineMidPoint(line);
-            lines.push([line[0], midPoint]);
-            lines.push([midPoint, line[1]]);
-        }
-    }
-    lines.forEach((line) => {
-        line.sort((p1, p2) => p1[0] < p2[0] || p1[0] === p2[0] && p1[1] < p2[1] ? -1 : 1);
-    });
-    return lines;
 }
 
 const shapeContainsPoint = (context, shape, x, y) => {
@@ -377,16 +355,22 @@ const reduceLinesToPerimeter = (shape) => {
                 repeatedLines.push(line);
             }
         }
-    });
-    const orderedLines = uniqueLines.splice(0, 1);
+    })
+    
+    shape.lines = orderLines(uniqueLines);
+    shape.path = createPath(shape);
+}
+
+const orderLines = (lines) => {
+    const orderedLines = lines.splice(0, 1);
     let previousPoint = orderedLines[0][1];
-    while (uniqueLines.length > 0) {
-        let index = uniqueLines.findIndex((line) => line[0] === previousPoint || line[1] === previousPoint);
+    while (lines.length > 0) {
+        let index = lines.findIndex((line) => line[0] === previousPoint || line[1] === previousPoint);
         if (index === -1) {
-            orderedLines.push(uniqueLines.splice(0, 1)[0]);
+            orderedLines.push(lines.splice(0, 1)[0]);
             previousPoint = orderedLines[orderedLines.length - 1][1];
         } else {
-            const newLine = uniqueLines.splice(index, 1)[0];
+            const newLine = lines.splice(index, 1)[0];
             if (newLine[0] === previousPoint) {
                 previousPoint = newLine[1];
                 orderedLines.push([newLine[0], newLine[1]]);
@@ -396,8 +380,7 @@ const reduceLinesToPerimeter = (shape) => {
             }
         }
     }
-    shape.lines = orderedLines;
-    shape.path = createPath(shape);
+    return orderedLines;
 }
 
 
