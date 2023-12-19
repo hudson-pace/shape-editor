@@ -43,7 +43,7 @@ const createShape = (x, y, size, def, rot) => {
 }
 
 const createPath = (shape) => {
-    const lines = shape.lines;
+    const lines = orderLines(shape.lines);
     const path = new Path2D();
 
     let chainBeginning;
@@ -356,12 +356,13 @@ const reduceLinesToPerimeter = (shape) => {
             }
         }
     })
-    
+
     shape.lines = orderLines(uniqueLines);
     shape.path = createPath(shape);
 }
 
-const orderLines = (lines) => {
+const orderLines = (linesInput) => {
+    const lines = [...linesInput];
     const orderedLines = lines.splice(0, 1);
     let previousPoint = orderedLines[0][1];
     while (lines.length > 0) {
