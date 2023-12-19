@@ -201,6 +201,38 @@ const removeSubShape = (shape, subShape) => {
     }
 }
 
+const duplicateShape = (shape) => {
+    const points = [];
+    shape.subShapes.forEach((subShape) => {
+        subShape.points.forEach((point) => {
+            if (!points.find((p) => p === point)) {
+                points.push(point);
+            }
+        });
+    });
+    const newPoints = points.map((point) => ({ ...point }));
+    const newSubShapes = [];
+    shape.subShapes.forEach((subShape) => {
+        const newSubShape = {
+            points: [],
+            id: idCounter++,
+        }
+        for (let i = 0; i < subShape.points.length; i++) {
+            newSubShape.points.push(newPoints.find((point) => point[0] === subShape.points[i][0] && point[1] === subShape.points[i][1]));
+        }
+        newSubShape.lines = createLinesFromPoints(newSubShape.points);
+        newSubShapes.push(newSubShape);
+    });
+
+    
+    const newShape = {
+        highlighted: false,
+        subShapes: newSubShapes,
+    }
+    recalculatePointsAndLines(newShape);
+    return newShape;
+}
+
 const getSubShape = (context, shape, x, y) => {
     return shape.subShapes.find((s) => {
         return context.isPointInPath(createPath(s), x, y);
@@ -342,6 +374,7 @@ const shapeUtils = {
     findMatchingLine,
     removeSubShape,
     getSubShape,
+    duplicateShape,
 }
 
 export default shapeUtils;

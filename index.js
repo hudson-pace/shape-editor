@@ -272,6 +272,13 @@ window.addEventListener('keydown', (e) => { // not firing on canvas. could give 
             }
         }
     }
+
+    if (e.key === 'c') {
+        if (selection.length === 1) {
+            shapes.push(shapeUtils.duplicateShape(selection[0]));
+            draw();
+        }
+    }
 });
 
 const exportData = () => {
