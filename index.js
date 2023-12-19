@@ -260,4 +260,13 @@ window.addEventListener('keydown', (e) => { // not firing on canvas
         selection = [];
         draw();
     }
+
+    if (e.key === 'l') {
+        for (let i = 0; i < shapes.length; i++) {
+            if (shapeUtils.shapeContainsPoint(context, shapes[i], prevX, prevY)) {
+                const subShape = shapeUtils.getSubShape(context, shapes[i], prevX, prevY);
+                break;
+            }
+        }
+    }
 });

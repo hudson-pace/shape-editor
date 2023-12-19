@@ -1,4 +1,5 @@
 const tolerance = 5;
+let idCounter = 0;
 
 const createLinesFromPoints = (points) => {
     const lines = [];
@@ -30,7 +31,8 @@ const createShape = (x, y, size, def, rot) => {
         highlighted: false,
         subShapes: [{
             points: [...points],
-            lines: [...lines]
+            lines: [...lines],
+            id: idCounter++,
         }],
     }
     recalculatePointsAndLines(shape);
