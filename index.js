@@ -265,8 +265,24 @@ window.addEventListener('keydown', (e) => { // not firing on canvas
         for (let i = 0; i < shapes.length; i++) {
             if (shapeUtils.shapeContainsPoint(context, shapes[i], prevX, prevY)) {
                 const subShape = shapeUtils.getSubShape(context, shapes[i], prevX, prevY);
+                console.log(subShape.id);
                 break;
             }
         }
     }
+});
+
+const exportData = () => {
+    const data = {
+        shapes: shapes.map((shape) => ({
+            subShapes: shape.subShapes.map((subShape) => ({
+                points: subShape.points,
+            })),
+        })),
+    };
+    console.log(JSON.stringify(data));
+}
+const exportButton = document.querySelector('#export-button');
+exportButton.addEventListener('click', () => {
+    exportData();
 });
