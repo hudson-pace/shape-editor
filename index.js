@@ -1,6 +1,6 @@
 import shapeUtils from './shapeUtils.js';
 
-const canvas = document.querySelector('#container');
+const canvas = document.querySelector('#editor-container');
 canvas.width = 1500;
 canvas.height = 600;
 
@@ -245,7 +245,9 @@ canvas.addEventListener('contextmenu', (e) => {
     e.preventDefault();
 });
 
-window.addEventListener('keydown', (e) => { // not firing on canvas
+const editor = document.querySelector('#editor');
+window.addEventListener('keydown', (e) => { // not firing on canvas. could give canvas a tabindex to let it receive focus.
+    if (editor.style.display === 'none') return; // listener attached to window, ignore event if editor is not displayed.
     const sides = parseInt(e.key);
     if (sides !== NaN && sides > 2) {
         shapes.push(shapeUtils.createShape(prevX, prevY, 20, shapeUtils.regularNGon(sides), 0));
@@ -285,4 +287,11 @@ const exportData = () => {
 const exportButton = document.querySelector('#export-button');
 exportButton.addEventListener('click', () => {
     exportData();
+});
+
+const game = document.querySelector('#game');
+const switchToGameButton = document.querySelector('#switch-to-game-button');
+switchToGameButton.addEventListener('click', () => {
+    editor.style.display = 'none';
+    game.style.display = 'block';
 });
