@@ -248,7 +248,16 @@ canvas.addEventListener('contextmenu', (e) => {
 window.addEventListener('keydown', (e) => { // not firing on canvas
     const sides = parseInt(e.key);
     if (sides !== NaN && sides > 2) {
-        shapes.push(shapeUtils.createShape(100, 100, 20, shapeUtils.regularNGon(sides), 0));
+        shapes.push(shapeUtils.createShape(prevX, prevY, 20, shapeUtils.regularNGon(sides), 0));
+        draw();
+    }
+
+    if (e.key === 'd' && selection.length > 0) {
+        selection.forEach((shape) => {
+            const i = shapes.findIndex((s) => s === shape);
+            shapes.splice(i, 1);
+        });
+        selection = [];
         draw();
     }
 });
