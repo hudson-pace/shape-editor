@@ -19,7 +19,7 @@ let boxEnd;
 
 const drawShape = (shape) => {
     context.fillStyle = 'lightgrey';
-    context.fill(shape.path)
+    context.fill(shape.path, 'evenodd');
 
     context.beginPath();
     context.strokeStyle = 'grey';
