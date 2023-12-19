@@ -14,7 +14,7 @@ const createLinesFromPoints = (points) => {
     lines.forEach((line) => {
         line.sort((p1, p2) => p1[0] < p2[0] || (p1[0] === p2[0] && p1[1] < p2[1]) ? -1 : 1);
     });
-    return lines;
+    return orderLines(lines);
 }
 
 const createShape = (x, y, size, def, rot) => {
@@ -43,7 +43,7 @@ const createShape = (x, y, size, def, rot) => {
 }
 
 const createPath = (shape) => {
-    const lines = orderLines(shape.lines);
+    const lines = shape.lines;
     const path = new Path2D();
 
     let chainBeginning;
@@ -191,6 +191,7 @@ const recalculatePointsAndLines = (shape) => {
     shape.points = points;
     shape.lines = lines;
     reduceLinesToPerimeter(shape);
+    shape.lines = orderLines(shape.lines);
     shape.path = createPath(shape);
 }
 
