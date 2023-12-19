@@ -103,21 +103,6 @@ const getUniquePointPairsFromLinePairs = (linePairs) => {
     return pointPairs;
 }
 
-const findPoiintMatches = (shape, shape2, snapTolerance) => {
-    const matchingPoints = [];
-    for (let i = 0; i < shape.points.length; i++) {
-        const p1 = shape.points[i];
-        const p2 = shape2.points.find((p) => distanceBetweenPoints(p, p2) < snapTolerance);
-        if (p2) {
-            matchingPoints.push([p1, p2]);
-        }
-    }
-    return {
-        shapes: [shape, shape2],
-        matchingPoints,
-    }
-}
-
 const findMatchingLine = (shape, shape2, snapTolerance) => {
     const matchingLines = [];
     for (let i = 0; i < shape.lines.length; i++) {
@@ -255,13 +240,6 @@ const rotatePoint = (x, y, rot) => {
     ]
 }
 
-const getLineMidPoint = (l) => {
-    return [
-        (l[0][0] + l[1][0]) / 2,
-        (l[0][1] + l[1][1]) / 2,
-    ];
-}
-
 const shapeContainsPoint = (context, shape, x, y) => {
     return context.isPointInPath(shape.path, x, y);
 }
@@ -304,43 +282,6 @@ const getCenterOfShapeGroup = (shapeGroup) => {
         });
     });
     return [(right + left) / 2, (bottom + top) / 2];
-}
-
-
-
-const compareLines = (l1, l2) => {
-    return getDifferenceBetweenLines(l1, l2) < tolerance;
-}
-
-const getSlope = (l) => {
-    if (l[0][0] === l[1][0]) {
-        return -1;
-    }
-    return (l[1][1] - l[0][1]) / (l[1][0] - l[0][0]);
-}
-
-const isPointInLine = (p, l) => {
-    return (
-        Math.abs(getSlope(l) - getSlope([l[0], p])) < tolerance
-        && p[0] > l[0][0]
-        && p[0] < l[1][0]
-        && Math.abs(p[1] - (l[0][1] + (getSlope(l) * (p[0] - l[0][0])))) < tolerance
-        && distanceBetweenPoints(p, l[0]) > tolerance
-        && distanceBetweenPoints(p, l[1]) > tolerance
-    )
-}
-
-const getPointsAlongLine = (l) => {
-    const pointCount = Math.floor(Math.max(distanceBetweenPoints(l[0], l[1]) / 25, 2));
-    const dx = (l[1][0] - l[0][0]) / (pointCount - 1);
-    const dy = (l[1][1] - l[0][1]) / (pointCount - 1);
-    const points = [];
-    points.push(l[0]);
-    for (let i = 1; i < pointCount - 1; i++) {
-        points.push([l[0][0] + (i * dx), l[0][1] + (i * dy)]);
-    }
-    points.push(l[1]);
-    return points;
 }
 
 const reduceLinesToPerimeter = (shape) => {
