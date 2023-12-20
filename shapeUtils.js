@@ -360,6 +360,26 @@ const orderLines = (linesInput) => {
     return orderedLines;
 }
 
+const fillShapesFromInputData = (shapes) => {
+    const points = [];
+    shapes.forEach((shape) => {
+        shape.subShapes.forEach((subShape) => {
+            for (let i = 0; i < subShape.points.length; i++) {
+                const point = points.find((p) => p[0] === subShape.points[i][0] && p[1] === subShape.points[i][1]);
+                if (!point) {
+                    points.push(subShape.points[i]);
+                } else {
+                    subShape.points[i] = point;
+                }
+            }
+            subShape.lines = createLinesFromPoints(subShape.points);
+            subShape.id = idCounter++;
+        });
+        shape.highlighted = false;
+        recalculatePointsAndLines(shape);
+    });
+}
+
 
 const shapeUtils = {
     updateShapeGroupLocation,
@@ -375,6 +395,9 @@ const shapeUtils = {
     removeSubShape,
     getSubShape,
     duplicateShape,
+    fillShapesFromInputData,
+    getCenterOfShapeGroup,
+    createPath,
 }
 
 export default shapeUtils;
