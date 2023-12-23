@@ -1,4 +1,5 @@
 import shapeUtils from './shapeUtils.js';
+import canvasUtils from './canvasUtils.js';
 
 const editor = document.querySelector('#editor');
 const game = document.querySelector('#game');
@@ -15,16 +16,7 @@ const context = canvas.getContext('2d');
 let shapes = [];
 let highlighted = [];
 const draw = () => {
-  context.fillStyle = 'whitesmoke';
-  context.strokeStyle = 'black';
-  context.fillRect(0, 0, canvas.width, canvas.height);
-  context.beginPath();
-  context.moveTo(0, 0);
-  context.lineTo(canvas.width, 0);
-  context.lineTo(canvas.width, canvas.height);
-  context.lineTo(0, canvas.height);
-  context.closePath();
-  context.stroke();
+  canvasUtils.drawCanvas(canvas, context);
 
   
   shapes.forEach((shape) => {

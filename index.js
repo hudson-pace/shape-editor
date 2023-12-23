@@ -1,11 +1,12 @@
 import shapeUtils from './shapeUtils.js';
+import canvasUtils from './canvasUtils.js';
 
 const canvas = document.querySelector('#editor-container');
 canvas.width = 1500;
 canvas.height = 600;
 
 const snapTolerance = 30;
-const showCoords = false;
+const showCoords = true;
 
 const context = canvas.getContext('2d');
 
@@ -38,10 +39,10 @@ const drawShape = (shape) => {
     
     
     if (showCoords) {
-        const points = shapeUtils.points;
+        const points = shape.points;
         context.fillStyle = 'black';
-        points.forEach(([x, y]) => {
-            context.fillText(`(${Math.floor(x)}, ${Math.floor(y)})`, x, y - 5);
+        points.forEach((p) => {
+            context.fillText(`(${Math.floor(p[0])}, ${Math.floor(p[1])})`, p[0], p[1] - 5);
         });
     }
 }
@@ -49,27 +50,10 @@ const drawShape = (shape) => {
 const shapes = [];
 
 const draw = () => {
-    context.fillStyle = 'whitesmoke';
-    context.strokeStyle = 'black';
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    context.beginPath();
-    context.moveTo(0, 0);
-    context.lineTo(canvas.width, 0);
-    context.lineTo(canvas.width, canvas.height);
-    context.lineTo(0, canvas.height);
-    context.closePath();
-    context.stroke();
+    canvasUtils.drawCanvas(canvas, context);
 
     if (draggingBox) {
-        context.fillStyle = 'rgba(0, 0, 255, 0.1)';
-        context.fillRect(boxStart[0], boxStart[1], boxEnd[0] - boxStart[0], boxEnd[1] - boxStart[1]);
-        context.strokeStyle = 'rgba(0, 0, 255, 0.3)';
-        context.moveTo(boxStart[0], boxStart[1]);
-        context.lineTo(boxEnd[0], boxStart[1]);
-        context.lineTo(boxEnd[0], boxEnd[1]);
-        context.lineTo(boxStart[0], boxEnd[1]);
-        context.lineTo(boxStart[0], boxStart[1]);
-        context.stroke();
+        canvasUtils.drawBox(context, 'rgba(0, 0, 255, 0.1)', 'rgba(0, 0, 255, 0.3)', boxStart, boxEnd);
     }
 
     shapes.forEach((shape) => {
