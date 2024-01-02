@@ -6,7 +6,7 @@ canvas.width = 1500;
 canvas.height = 600;
 
 const snapTolerance = 30;
-const showCoords = true;
+const showCoords = false;
 
 const context = canvas.getContext('2d');
 
@@ -141,6 +141,14 @@ canvas.addEventListener('mousedown', (e) => {
     }
 });
 
+let mouseInCanvas = false;
+canvas.addEventListener('mouseenter', () => {
+    mouseInCanvas = true;
+});
+canvas.addEventListener('mouseleave', () => {
+    mouseInCanvas = false;
+});
+
 canvas.addEventListener('mousemove', (e) => {
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -232,6 +240,7 @@ canvas.addEventListener('contextmenu', (e) => {
 const editor = document.querySelector('#editor');
 window.addEventListener('keydown', (e) => { // not firing on canvas. could give canvas a tabindex to let it receive focus.
     if (editor.style.display === 'none') return; // listener attached to window, ignore event if editor is not displayed.
+    if (!mouseInCanvas) return;
     const sides = parseInt(e.key);
     if (sides !== NaN && sides > 2) {
         shapes.push(shapeUtils.createShape(prevX, prevY, 20, shapeUtils.regularNGon(sides), 0));
@@ -266,12 +275,20 @@ window.addEventListener('keydown', (e) => { // not firing on canvas. could give 
 });
 
 const exportData = () => {
+    const mineCountInput = document.querySelector('#mine-count-input');
+    const cornersCheckbox = document.querySelector('#corners-checkbox');
+    let mineCount = parseInt(mineCountInput.value);
+    if (isNaN(mineCount)) {
+        mineCount = 0;
+    }
     const data = {
         shapes: shapes.map((shape) => ({
             subShapes: shape.subShapes.map((subShape) => ({
                 points: subShape.points,
             })),
         })),
+        mineCount,
+        corners: cornersCheckbox.checked,
     };
     console.log(JSON.stringify(data));
 }

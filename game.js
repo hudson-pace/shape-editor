@@ -57,10 +57,11 @@ const dataInput = document.querySelector('#data-input');
 const inputButton = document.querySelector('#input-button');
 inputButton.addEventListener('click', (e) => {
   const data = JSON.parse(dataInput.value);
+  const mineCount = data.mineCount;
   shapes = data.shapes;
   shapeUtils.fillShapesFromInputData(shapes);
   draw();
-  calculateNeighbors(false);
+  calculateNeighbors(data.corners);
 });
 
 const calculateNeighbors = (corners) => {
