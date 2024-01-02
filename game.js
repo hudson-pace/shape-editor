@@ -55,31 +55,52 @@ draw();
 
 const dataInput = document.querySelector('#data-input');
 const inputButton = document.querySelector('#input-button');
-inputButton.addEventListener('click', () => {
+inputButton.addEventListener('click', (e) => {
   const data = JSON.parse(dataInput.value);
   shapes = data.shapes;
   shapeUtils.fillShapesFromInputData(shapes);
   draw();
-  calculateNeighbors();
+  calculateNeighbors(false);
 });
 
-const calculateNeighbors = () => {
+const calculateNeighbors = (corners) => {
   shapes.forEach((shape) => {
     shape.subShapes.forEach((subShape) => {
-      calculateNeighborsOfSubShape(subShape, shape);
+      calculateNeighborsOfSubShape(subShape, shape, corners);
     });
   });
-  console.log(shapes);
 }
 
-const calculateNeighborsOfSubShape = (subShape, shape) => {
-  const neighbors = [];
-  subShape.points.forEach((point) => {
-    const neighbor = shape.subShapes.filter((ss) => ss !== subShape && !neighbors.find((n) => n === ss) && ss.points.find((p) => p === point));
-    if (neighbor.length > 0) {
-      neighbors.push(...neighbor);
+const subShapesShareLine = (s1, s2) => {
+  for (let i = 0; i < s1.lines.length; i++) {
+    for (let j = 0; j < s2.lines.length; j++) {
+      const line1 = s1.lines[i];
+      const line2 = s2.lines[j];
+      if ((line1[0] === line2[0] && line1[1] === line2[1]) || (line1[0] === line2[1] && line1[1] === line2[0])) {
+        return true;
+      }
     }
-  });
+  }
+  return false;
+}
+
+const calculateNeighborsOfSubShape = (subShape, shape, corners) => {
+  const neighbors = [];
+  
+  if (corners) {
+    subShape.points.forEach((point) => {
+      const neighbor = shape.subShapes.filter((ss) => ss !== subShape && !neighbors.find((n) => n === ss) && ss.points.find((p) => p === point));
+      if (neighbor.length > 0) {
+        neighbors.push(...neighbor);
+      }
+    });
+  } else {
+    shape.subShapes.forEach((ss) => {
+      if (ss !== subShape && subShapesShareLine(subShape, ss)) {
+        neighbors.push(ss);
+      }
+    });
+  }
   subShape.neighbors = neighbors;
 }
 
