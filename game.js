@@ -20,20 +20,32 @@ const draw = () => {
 
   
   shapes.forEach((shape) => {
-    context.fillStyle = 'lightgrey';
-    context.fill(shape.path, 'evenodd');
+    context.fillStyle = 'lightblue';
+    // context.fill(shape.path, 'evenodd');
 
-    context.beginPath();
+    // context.beginPath();
     context.strokeStyle = 'grey';
     context.lineWidth = 1;
     shape.subShapes.forEach((s) => {
-        s.lines.forEach((l) => {
-            context.moveTo(l[0][0], l[0][1]);
-            context.lineTo(l[1][0], l[1][1]);
-        });
-        
+      if (s.exposed) {
+        context.fillStyle = 'white';
+      } else if (s.flagged) {
+        context.fillStyle = 'blue';
+      } else {
+        context.fillStyle = 'lightblue';
+      }
+      const path = shapeUtils.createPath(s);
+      /*
+      context.beginPath();
+      s.lines.forEach((l) => {
+          context.moveTo(l[0][0], l[0][1]);
+          context.lineTo(l[1][0], l[1][1]);
+      });
+      */
+      context.stroke(path);
+      context.fill(path);
     });
-    context.stroke();
+    // context.stroke();
     context.lineWidth = 2;
     context.strokeStyle = shape.highlighted ? 'blue' : 'black';
     context.stroke(shape.path);
@@ -47,12 +59,31 @@ const draw = () => {
       context.textBaseline = 'middle';
       context.fillStyle = 'black';
       context.font = '20px serif';
-      context.fillText(`${s.id}`, center[0], center[1]);
+      // context.fillText(`${s.id}`, center[0], center[1]);
+      context.fillText(`${s.value !== 0 && s.exposed ? s.value : ''}`, center[0], center[1]);
     });
   });
 }
 draw();
 
+// Fisher-Yates Shuffle
+const shuffleArray = (arr) => {
+  const shuffled = [...arr];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+const getSubShapeList = () => {
+  const subShapes = [];
+  shapes.forEach((shape) => {
+    subShapes.push(...shape.subShapes);
+  });
+  console.log(subShapes);
+  return subShapes;
+}
 const dataInput = document.querySelector('#data-input');
 const inputButton = document.querySelector('#input-button');
 inputButton.addEventListener('click', (e) => {
@@ -60,8 +91,22 @@ inputButton.addEventListener('click', (e) => {
   const mineCount = data.mineCount;
   shapes = data.shapes;
   shapeUtils.fillShapesFromInputData(shapes);
-  draw();
   calculateNeighbors(data.corners);
+  const shuffledSubShapes = shuffleArray(getSubShapeList());
+  shuffledSubShapes.forEach((ss) => {
+    ss.value = 0;
+    ss.exposed = false;
+    ss.flagged = false;
+  });
+  for (let i = 0; i < mineCount; i++) {
+    shuffledSubShapes[i].value = -1;
+    shuffledSubShapes[i].neighbors.forEach((n) => {
+      if (n.value !== -1) {
+        n.value += 1;
+      }
+    });
+  }
+  draw();
 });
 
 const calculateNeighbors = (corners) => {
@@ -104,7 +149,9 @@ const calculateNeighborsOfSubShape = (subShape, shape, corners) => {
   }
   subShape.neighbors = neighbors;
 }
-
+canvas.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+});
 canvas.addEventListener('mousedown', (e) => {
   const rect = canvas.getBoundingClientRect();
   const x = e.clientX - rect.left;
@@ -113,7 +160,12 @@ canvas.addEventListener('mousedown', (e) => {
     if (shapeUtils.shapeContainsPoint(context, shape, x, y)) {
       const subShape = shapeUtils.getSubShape(context, shape, x, y);
       if (subShape) {
-        highlighted = subShape.neighbors;
+        if (e.buttons === 1 && !subShape.flagged) { // leftclick
+          subShape.exposed = true;
+        } else if (e.buttons === 2) { //rightclick
+          subShape.flagged = !subShape.flagged;
+        }
+        //highlighted = subShape.neighbors;
         draw();
       }
     }
