@@ -152,6 +152,18 @@ const calculateNeighborsOfSubShape = (subShape, shape, corners) => {
 canvas.addEventListener('contextmenu', (e) => {
   e.preventDefault();
 });
+
+const showTile = (tile) => {
+  tile.exposed = true;
+  console.log(tile.value);
+  if (tile.value === 0) {
+    tile.neighbors.forEach((n) => {
+      if (!n.exposed) {
+        showTile(n);
+      }
+    });
+  }
+}
 canvas.addEventListener('mousedown', (e) => {
   const rect = canvas.getBoundingClientRect();
   const x = e.clientX - rect.left;
@@ -161,7 +173,7 @@ canvas.addEventListener('mousedown', (e) => {
       const subShape = shapeUtils.getSubShape(context, shape, x, y);
       if (subShape) {
         if (e.buttons === 1 && !subShape.flagged) { // leftclick
-          subShape.exposed = true;
+          showTile(subShape);
         } else if (e.buttons === 2) { //rightclick
           subShape.flagged = !subShape.flagged;
         }
