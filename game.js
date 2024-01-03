@@ -25,6 +25,8 @@ switchToEditorButton.addEventListener('click', () => {
 
 let flagCount;
 let mineCount;
+let gameWon;
+let gameLost;
 
 const canvas = document.querySelector('#game-container');
 canvas.width = 1500;
@@ -85,7 +87,14 @@ const draw = () => {
     });
   });
   context.textAlign = 'start';
-  context.fillText(`Flags: ${mineCount - flagCount}`, 10, 10);
+  context.fillText(`Flags: ${mineCount - flagCount}`, 10, 20);
+  if (gameWon) {
+    context.fillStyle = 'green';
+    context.fillText('You Win.', 10, 50);
+  } else if (gameLost) {
+    context.fillStyle = 'red';
+    context.fillText('You Lose.', 10, 50);
+  }
 }
 draw();
 
@@ -124,6 +133,8 @@ const loadGame = (data) => {
   draw();
 }
 const resetBoard = () => {
+  gameWon = false;
+  gameLost = false;
   flagCount = 0;
   const subShapes = getSubShapeList();
   subShapes.forEach((ss) => {
@@ -212,10 +223,29 @@ const showTile = (tile) => {
         showTile(n);
       }
     });
+  } else if (tile.value === -1) {
+    gameLost = true;
   }
 }
 
+const checkForWin = () => {
+  if (flagCount !== mineCount) {
+    return false;
+  }
+  const tiles = getSubShapeList();
+  for (let i = 0; i < tiles.length; i++) {
+    if (!tiles[i].flagged && !tiles[i].exposed) {
+      return false;
+    }
+  }
+  gameWon = true;
+  return true;
+}
+
 canvas.addEventListener('mousedown', (e) => {
+  if (gameWon || gameLost) {
+    return;
+  }
   const rect = canvas.getBoundingClientRect();
   const x = e.clientX - rect.left;
   const y = e.clientY - rect.top;
@@ -229,6 +259,7 @@ canvas.addEventListener('mousedown', (e) => {
             firstClick = false;
           }
           showTile(subShape);
+          checkForWin();
         } else if (e.buttons === 2 && !subShape.exposed) { //rightclick
           if (subShape.flagged) {
             subShape.flagged = false;
@@ -236,10 +267,12 @@ canvas.addEventListener('mousedown', (e) => {
           } else {
             subShape.flagged = true;
             flagCount++;
+            checkForWin();
           }
         } else if (e.buttons === 3 && subShape.exposed) {
           if (countNeighboringFlags(subShape) === subShape.value) {
             showUnflaggedNeighbors(subShape);
+            checkForWin();
           }
         }
         //highlighted = subShape.neighbors;
