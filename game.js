@@ -1,6 +1,7 @@
 import shapeUtils from './shapeUtils.js';
 import canvasUtils from './canvasUtils.js';
 import gameUtils from './gameUtils.js';
+import autoplay from './autoplay.js';
 
 fetch('./defaultGames.json')
   .then((res) => res.json())
@@ -23,6 +24,45 @@ switchToEditorButton.addEventListener('click', () => {
     game.style.display = 'none';
     editor.style.display = 'block';
 });
+
+const getRandomTile = () => {
+  const tiles = getSubShapeList();
+  return tiles[Math.floor(Math.random() * tiles.length)];
+}
+
+let isAutoplaying = false;
+
+const autoplayCheckbox = document.querySelector('#autoplay-checkbox');
+autoplayCheckbox.checked = false;
+autoplayCheckbox.addEventListener('change', () => {
+  isAutoplaying = autoplayCheckbox.checked;
+  if (isAutoplaying) {
+    startAutoplay();
+  } else {
+    stopAutoplay();
+  }
+});
+
+let firstClick;
+
+let autoplayInterval;
+const startAutoplay = () => {
+  autoplayInterval = setInterval(() => {
+    if (!gameWon && !gameLost) {
+      if (firstClick) {
+        takeTurn([getRandomTile()], [], []);
+      } else {
+        const { clickTargets, flagTargets } = autoplay(getSubShapeList());
+        takeTurn(clickTargets, flagTargets, []);
+      }
+    } else {
+      resetBoard();
+    }
+  }, 1000)
+}
+const stopAutoplay = () => {
+  clearInterval(autoplayInterval);
+}
 
 let flagCount;
 let mineCount;
@@ -112,9 +152,7 @@ inputButton.addEventListener('click', (e) => {
   loadGame(data);
 });
 
-let firstClick;
 const loadGame = (data) => {
-  firstClick = true;
   mineCount = data.mineCount;
   shapes = data.shapes;
   shapeUtils.fillShapesFromInputData(shapes);
@@ -123,6 +161,7 @@ const loadGame = (data) => {
   draw();
 }
 const resetBoard = () => {
+  firstClick = true;
   gameWon = false;
   gameLost = false;
   flagCount = 0;
@@ -243,6 +282,7 @@ const takeTurn = (clickTargets, flagTargets, revealTargets) => {
     leftAndRightClickOnTile(tile);
   });
   checkForWin();
+  draw();
 }
 
 const leftClickOnTile = (tile) => {
@@ -274,7 +314,7 @@ const leftAndRightClickOnTile = (tile) => {
 }
 
 canvas.addEventListener('mousedown', (e) => {
-  if (gameWon || gameLost) {
+  if (gameWon || gameLost || isAutoplaying) {
     return;
   }
   const rect = canvas.getBoundingClientRect();
@@ -291,7 +331,6 @@ canvas.addEventListener('mousedown', (e) => {
         } else if (e.buttons === 3) {
           takeTurn([], [], [subShape]);
         }
-        draw();
       }
     }
   })
