@@ -42,7 +42,11 @@ const draw = () => {
     context.lineWidth = 1;
     shape.subShapes.forEach((s) => {
       if (s.exposed) {
-        context.fillStyle = 'white';
+        if (s.value === -1) {
+          context.fillStyle = 'red';
+        } else {
+          context.fillStyle = 'white';
+        }
       } else if (s.flagged) {
         context.fillStyle = 'blue';
       } else {
@@ -74,7 +78,7 @@ const draw = () => {
       context.fillStyle = 'black';
       context.font = '20px serif';
       // context.fillText(`${s.id}`, center[0], center[1]);
-      context.fillText(`${s.value !== 0 && s.exposed ? s.value : ''}`, center[0], center[1]);
+      context.fillText(`${s.value > 0 && s.exposed ? s.value : ''}`, center[0], center[1]);
     });
   });
 }
@@ -218,8 +222,12 @@ canvas.addEventListener('mousedown', (e) => {
             firstClick = false;
           }
           showTile(subShape);
-        } else if (e.buttons === 2) { //rightclick
+        } else if (e.buttons === 2 && !subShape.exposed) { //rightclick
           subShape.flagged = !subShape.flagged;
+        } else if (e.buttons === 3 && subShape.exposed) {
+          if (countNeighboringFlags(subShape) === subShape.value) {
+            showUnflaggedNeighbors(subShape);
+          }
         }
         //highlighted = subShape.neighbors;
         draw();
@@ -227,7 +235,16 @@ canvas.addEventListener('mousedown', (e) => {
     }
   })
 });
-
+const countNeighboringFlags = (tile) => {
+  return tile.neighbors.filter((n) => n.flagged).length;
+}
+const showUnflaggedNeighbors = (tile) => {
+  tile.neighbors.forEach((n) => {
+    if (!n.flagged && !n.exposed) {
+      showTile(n);
+    }
+  });
+}
 canvas.addEventListener('mouseup', () => {
   highlighted = [];
   draw();
