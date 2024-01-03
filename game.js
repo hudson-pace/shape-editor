@@ -1,5 +1,6 @@
 import shapeUtils from './shapeUtils.js';
 import canvasUtils from './canvasUtils.js';
+import gameUtils from './gameUtils.js';
 
 fetch('./defaultGames.json')
   .then((res) => res.json())
@@ -266,7 +267,7 @@ const rightClickOnTile = (tile) => {
 }
 const leftAndRightClickOnTile = (tile) => {
   if (tile.exposed) {
-    if (countNeighboringFlags(tile) === tile.value) {
+    if (gameUtils.countNeighboringFlags(tile) === tile.value) {
       showUnflaggedNeighbors(tile);
     }
   }
@@ -295,9 +296,7 @@ canvas.addEventListener('mousedown', (e) => {
     }
   })
 });
-const countNeighboringFlags = (tile) => {
-  return tile.neighbors.filter((n) => n.flagged).length;
-}
+
 const showUnflaggedNeighbors = (tile) => {
   tile.neighbors.forEach((n) => {
     if (!n.flagged && !n.exposed) {
