@@ -103,18 +103,42 @@ inputButton.addEventListener('click', (e) => {
   const data = JSON.parse(dataInput.value);
   loadGame(data);
 });
-
+let mineCount;
+let firstClick;
 const loadGame = (data) => {
-  const mineCount = data.mineCount;
+  firstClick = true;
+  mineCount = data.mineCount;
   shapes = data.shapes;
   shapeUtils.fillShapesFromInputData(shapes);
+  resetBoard();
   calculateNeighbors(data.corners);
-  const shuffledSubShapes = shuffleArray(getSubShapeList());
-  shuffledSubShapes.forEach((ss) => {
+  draw();
+}
+const resetBoard = () => {
+  const subShapes = getSubShapeList();
+  subShapes.forEach((ss) => {
     ss.value = 0;
     ss.exposed = false;
     ss.flagged = false;
   });
+}
+
+const placeMines = (startingTile) => {
+  const clearTiles = [startingTile, ...startingTile.neighbors]; // The starting tile and its neighbors should be empty.
+  const subShapes = getSubShapeList();
+  let shuffledSubShapes;
+  let notClear = true;
+  while (notClear) {
+    notClear = false;
+    shuffledSubShapes = shuffleArray(subShapes);
+    for (let i = 0; i < mineCount; i++) {
+      if (clearTiles.find((tile) => tile === shuffledSubShapes[i])) {
+        notClear = true;
+        break;
+      }
+    }
+  }
+
   for (let i = 0; i < mineCount; i++) {
     shuffledSubShapes[i].value = -1;
     shuffledSubShapes[i].neighbors.forEach((n) => {
@@ -189,6 +213,10 @@ canvas.addEventListener('mousedown', (e) => {
       const subShape = shapeUtils.getSubShape(context, shape, x, y);
       if (subShape) {
         if (e.buttons === 1 && !subShape.flagged) { // leftclick
+          if (firstClick) {
+            placeMines(subShape);
+            firstClick = false;
+          }
           showTile(subShape);
         } else if (e.buttons === 2) { //rightclick
           subShape.flagged = !subShape.flagged;
