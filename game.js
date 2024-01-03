@@ -33,7 +33,6 @@ canvas.width = 1500;
 canvas.height = 600;
 const context = canvas.getContext('2d');
 let shapes = [];
-let highlighted = [];
 const draw = () => {
   canvasUtils.drawCanvas(canvas, context);
 
@@ -58,24 +57,14 @@ const draw = () => {
         context.fillStyle = 'lightblue';
       }
       const path = shapeUtils.createPath(s);
-      /*
-      context.beginPath();
-      s.lines.forEach((l) => {
-          context.moveTo(l[0][0], l[0][1]);
-          context.lineTo(l[1][0], l[1][1]);
-      });
-      */
       context.stroke(path);
       context.fill(path);
     });
     // context.stroke();
     context.lineWidth = 2;
-    context.strokeStyle = shape.highlighted ? 'blue' : 'black';
+    context.strokeStyle = 'black';
     context.stroke(shape.path);
     context.fillStyle = 'yellow';
-    highlighted.forEach((subShape) => {
-      context.fill(shapeUtils.createPath(subShape));
-    });
     shape.subShapes.forEach((s) => {
       const center = shapeUtils.getCenterOfShapeGroup([s]);
       context.textAlign = 'center';
@@ -242,6 +231,47 @@ const checkForWin = () => {
   return true;
 }
 
+const takeTurn = (clickTargets, flagTargets, revealTargets) => {
+  clickTargets.forEach((tile) => {
+    leftClickOnTile(tile);
+  });
+  flagTargets.forEach((tile) => {
+    rightClickOnTile(tile);
+  });
+  revealTargets.forEach((tile) => {
+    leftAndRightClickOnTile(tile);
+  });
+  checkForWin();
+}
+
+const leftClickOnTile = (tile) => {
+  if (!tile.flagged) {
+    if (firstClick) {
+      placeMines(tile);
+      firstClick = false;
+    }
+    showTile(tile);
+  }
+}
+const rightClickOnTile = (tile) => {
+  if (!tile.exposed) {
+    if (tile.flagged) {
+      tile.flagged = false;
+      flagCount--;
+    } else {
+      tile.flagged = true;
+      flagCount++;
+    }
+  }
+}
+const leftAndRightClickOnTile = (tile) => {
+  if (tile.exposed) {
+    if (countNeighboringFlags(tile) === tile.value) {
+      showUnflaggedNeighbors(tile);
+    }
+  }
+}
+
 canvas.addEventListener('mousedown', (e) => {
   if (gameWon || gameLost) {
     return;
@@ -253,29 +283,13 @@ canvas.addEventListener('mousedown', (e) => {
     if (shapeUtils.shapeContainsPoint(context, shape, x, y)) {
       const subShape = shapeUtils.getSubShape(context, shape, x, y);
       if (subShape) {
-        if (e.buttons === 1 && !subShape.flagged) { // leftclick
-          if (firstClick) {
-            placeMines(subShape);
-            firstClick = false;
-          }
-          showTile(subShape);
-          checkForWin();
-        } else if (e.buttons === 2 && !subShape.exposed) { //rightclick
-          if (subShape.flagged) {
-            subShape.flagged = false;
-            flagCount--;
-          } else {
-            subShape.flagged = true;
-            flagCount++;
-            checkForWin();
-          }
-        } else if (e.buttons === 3 && subShape.exposed) {
-          if (countNeighboringFlags(subShape) === subShape.value) {
-            showUnflaggedNeighbors(subShape);
-            checkForWin();
-          }
+        if (e.buttons === 1) { // leftclick
+          takeTurn([subShape], [], []);
+        } else if (e.buttons === 2) { //rightclick
+          takeTurn([], [subShape], []);
+        } else if (e.buttons === 3) {
+          takeTurn([], [], [subShape]);
         }
-        //highlighted = subShape.neighbors;
         draw();
       }
     }
@@ -291,7 +305,3 @@ const showUnflaggedNeighbors = (tile) => {
     }
   });
 }
-canvas.addEventListener('mouseup', () => {
-  highlighted = [];
-  draw();
-});
