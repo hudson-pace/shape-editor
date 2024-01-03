@@ -1,16 +1,27 @@
 body {
     text-align: center;
 }
-#container {
-    margin-top: 10px;
+.container {
     display: inline-block;
 }
-#control-panel {
-    margin-top: 10px;
+.wrapper {
+    margin: 10px;
+}
+#game {
+    display: none;
+}
+.control-panel {
     vertical-align: top;
     border: 2px solid black;
     height: 600px;
     width: 80px;
     display: inline-block;
     box-sizing: border-box;
+    padding-top: 12px;
+}
+#data-input {
+    width: 80%;
+}
+#mine-count-input {
+    width: 80%;
 }

@@ -5,10 +5,28 @@
         <link rel="stylesheet" href="index.css" />
     </head>
     <body>
-        <div id="control-panel">
-            <button id="export-button">Export</button>
+        <div id="editor" class="wrapper">
+            <div class="control-panel">
+                <label for="corners-checkbox">corners?</label> <input type="checkbox" id="corners-checkbox" /> <br />
+                <label for="mine-count-input">mine count:</label><input type="text" id="mine-count-input" />
+                <button id="export-button">Export</button>
+                <button id="switch-to-game-button">Switch</button>
+            </div>
+            <canvas id="editor-container" class="container"></canvas>
         </div>
-        <canvas id="container"></canvas>
+        <div id="game" class="wrapper">
+            <div class="control-panel">
+                <input type='text' id='data-input' />
+                <button id="input-button">Input</button>
+                <button id="switch-to-editor-button">Switch</button>
+                <label for="autoplay-checkbox">autoplay?</label> <input type="checkbox" id="autoplay-checkbox" /> <br />
+                Defaults:<br />
+                <button id="default-1-button" disabled>squares</button>
+                <button id="default-2-button" disabled>hexagons</button>
+            </div>
+            <canvas id="game-container" class="container"></canvas>
+        </div>
         <script type="module" src="index.js"></script>
+        <script type="module" src="game.js"></script>
     </body>
 </html>

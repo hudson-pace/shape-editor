@@ -1,6 +1,7 @@
 import shapeUtils from './shapeUtils.js';
+import canvasUtils from './canvasUtils.js';
 
-const canvas = document.querySelector('#container');
+const canvas = document.querySelector('#editor-container');
 canvas.width = 1500;
 canvas.height = 600;
 
@@ -38,10 +39,10 @@ const drawShape = (shape) => {
     
     
     if (showCoords) {
-        const points = shapeUtils.points;
+        const points = shape.points;
         context.fillStyle = 'black';
-        points.forEach(([x, y]) => {
-            context.fillText(`(${Math.floor(x)}, ${Math.floor(y)})`, x, y - 5);
+        points.forEach((p) => {
+            context.fillText(`(${Math.floor(p[0])}, ${Math.floor(p[1])})`, p[0], p[1] - 5);
         });
     }
 }
@@ -49,27 +50,10 @@ const drawShape = (shape) => {
 const shapes = [];
 
 const draw = () => {
-    context.fillStyle = 'whitesmoke';
-    context.strokeStyle = 'black';
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    context.beginPath();
-    context.moveTo(0, 0);
-    context.lineTo(canvas.width, 0);
-    context.lineTo(canvas.width, canvas.height);
-    context.lineTo(0, canvas.height);
-    context.closePath();
-    context.stroke();
+    canvasUtils.drawCanvas(canvas, context);
 
     if (draggingBox) {
-        context.fillStyle = 'rgba(0, 0, 255, 0.1)';
-        context.fillRect(boxStart[0], boxStart[1], boxEnd[0] - boxStart[0], boxEnd[1] - boxStart[1]);
-        context.strokeStyle = 'rgba(0, 0, 255, 0.3)';
-        context.moveTo(boxStart[0], boxStart[1]);
-        context.lineTo(boxEnd[0], boxStart[1]);
-        context.lineTo(boxEnd[0], boxEnd[1]);
-        context.lineTo(boxStart[0], boxEnd[1]);
-        context.lineTo(boxStart[0], boxStart[1]);
-        context.stroke();
+        canvasUtils.drawBox(context, 'rgba(0, 0, 255, 0.1)', 'rgba(0, 0, 255, 0.3)', boxStart, boxEnd);
     }
 
     shapes.forEach((shape) => {
@@ -155,6 +139,14 @@ canvas.addEventListener('mousedown', (e) => {
         boxEnd = [x, y];
         draw();
     }
+});
+
+let mouseInCanvas = false;
+canvas.addEventListener('mouseenter', () => {
+    mouseInCanvas = true;
+});
+canvas.addEventListener('mouseleave', () => {
+    mouseInCanvas = false;
 });
 
 canvas.addEventListener('mousemove', (e) => {
@@ -245,7 +237,10 @@ canvas.addEventListener('contextmenu', (e) => {
     e.preventDefault();
 });
 
-window.addEventListener('keydown', (e) => { // not firing on canvas
+const editor = document.querySelector('#editor');
+window.addEventListener('keydown', (e) => { // not firing on canvas. could give canvas a tabindex to let it receive focus.
+    if (editor.style.display === 'none') return; // listener attached to window, ignore event if editor is not displayed.
+    if (!mouseInCanvas) return;
     const sides = parseInt(e.key);
     if (sides !== NaN && sides > 2) {
         shapes.push(shapeUtils.createShape(prevX, prevY, 20, shapeUtils.regularNGon(sides), 0));
@@ -270,19 +265,41 @@ window.addEventListener('keydown', (e) => { // not firing on canvas
             }
         }
     }
+
+    if (e.key === 'c') {
+        if (selection.length === 1) {
+            shapes.push(shapeUtils.duplicateShape(selection[0]));
+            draw();
+        }
+    }
 });
 
 const exportData = () => {
+    const mineCountInput = document.querySelector('#mine-count-input');
+    const cornersCheckbox = document.querySelector('#corners-checkbox');
+    let mineCount = parseInt(mineCountInput.value);
+    if (isNaN(mineCount)) {
+        mineCount = 0;
+    }
     const data = {
         shapes: shapes.map((shape) => ({
             subShapes: shape.subShapes.map((subShape) => ({
                 points: subShape.points,
             })),
         })),
+        mineCount,
+        corners: cornersCheckbox.checked,
     };
     console.log(JSON.stringify(data));
 }
 const exportButton = document.querySelector('#export-button');
 exportButton.addEventListener('click', () => {
     exportData();
+});
+
+const game = document.querySelector('#game');
+const switchToGameButton = document.querySelector('#switch-to-game-button');
+switchToGameButton.addEventListener('click', () => {
+    editor.style.display = 'none';
+    game.style.display = 'block';
 });
