@@ -1,6 +1,20 @@
 import shapeUtils from './shapeUtils.js';
 import canvasUtils from './canvasUtils.js';
 
+fetch('./defaultGames.json')
+  .then((res) => res.json())
+  .then((json) => {
+    const defaultOneButton = document.querySelector('#default-1-button');
+    const defaultTwoButton = document.querySelector('#default-2-button');
+    defaultOneButton.disabled = false;
+    defaultTwoButton.disabled = false;
+    defaultOneButton.addEventListener('click', () => {
+      loadGame(json[0]);
+    });
+    defaultTwoButton.addEventListener('click', () => {
+      loadGame(json[1]);
+    });
+  });
 const editor = document.querySelector('#editor');
 const game = document.querySelector('#game');
 const switchToEditorButton = document.querySelector('#switch-to-editor-button');
@@ -81,13 +95,16 @@ const getSubShapeList = () => {
   shapes.forEach((shape) => {
     subShapes.push(...shape.subShapes);
   });
-  console.log(subShapes);
   return subShapes;
 }
 const dataInput = document.querySelector('#data-input');
 const inputButton = document.querySelector('#input-button');
 inputButton.addEventListener('click', (e) => {
   const data = JSON.parse(dataInput.value);
+  loadGame(data);
+});
+
+const loadGame = (data) => {
   const mineCount = data.mineCount;
   shapes = data.shapes;
   shapeUtils.fillShapesFromInputData(shapes);
@@ -107,7 +124,7 @@ inputButton.addEventListener('click', (e) => {
     });
   }
   draw();
-});
+}
 
 const calculateNeighbors = (corners) => {
   shapes.forEach((shape) => {
@@ -155,7 +172,6 @@ canvas.addEventListener('contextmenu', (e) => {
 
 const showTile = (tile) => {
   tile.exposed = true;
-  console.log(tile.value);
   if (tile.value === 0) {
     tile.neighbors.forEach((n) => {
       if (!n.exposed) {
