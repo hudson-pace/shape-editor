@@ -23,6 +23,9 @@ switchToEditorButton.addEventListener('click', () => {
     editor.style.display = 'block';
 });
 
+let flagCount;
+let mineCount;
+
 const canvas = document.querySelector('#game-container');
 canvas.width = 1500;
 canvas.height = 600;
@@ -81,6 +84,8 @@ const draw = () => {
       context.fillText(`${s.value > 0 && s.exposed ? s.value : ''}`, center[0], center[1]);
     });
   });
+  context.textAlign = 'start';
+  context.fillText(`Flags: ${mineCount - flagCount}`, 10, 10);
 }
 draw();
 
@@ -107,7 +112,7 @@ inputButton.addEventListener('click', (e) => {
   const data = JSON.parse(dataInput.value);
   loadGame(data);
 });
-let mineCount;
+
 let firstClick;
 const loadGame = (data) => {
   firstClick = true;
@@ -119,6 +124,7 @@ const loadGame = (data) => {
   draw();
 }
 const resetBoard = () => {
+  flagCount = 0;
   const subShapes = getSubShapeList();
   subShapes.forEach((ss) => {
     ss.value = 0;
@@ -208,6 +214,7 @@ const showTile = (tile) => {
     });
   }
 }
+
 canvas.addEventListener('mousedown', (e) => {
   const rect = canvas.getBoundingClientRect();
   const x = e.clientX - rect.left;
@@ -223,7 +230,13 @@ canvas.addEventListener('mousedown', (e) => {
           }
           showTile(subShape);
         } else if (e.buttons === 2 && !subShape.exposed) { //rightclick
-          subShape.flagged = !subShape.flagged;
+          if (subShape.flagged) {
+            subShape.flagged = false;
+            flagCount--;
+          } else {
+            subShape.flagged = true;
+            flagCount++;
+          }
         } else if (e.buttons === 3 && subShape.exposed) {
           if (countNeighboringFlags(subShape) === subShape.value) {
             showUnflaggedNeighbors(subShape);
