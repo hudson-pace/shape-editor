@@ -50,8 +50,10 @@ const drawShape = (shape) => {
 const shapes = [];
 
 const draw = () => {
+    // Clears the canvas.
     canvasUtils.drawCanvas(canvas, context);
 
+    // Draws translucent blue box showing current selection.
     if (draggingBox) {
         canvasUtils.drawBox(context, 'rgba(0, 0, 255, 0.1)', 'rgba(0, 0, 255, 0.3)', boxStart, boxEnd);
     }
@@ -60,15 +62,20 @@ const draw = () => {
         drawShape(shape);
     });
 
-    context.strokeStyle = 'grey';
-    context.lineWidth = 2;
-    context.fillStyle = 'black';
+    // When dragging shapes, and releasing will cause them to snap together.
+    // Draws circles at the aligned points, and lines between them.
     if (lineMatch !== undefined) {
+        context.strokeStyle = 'grey';
+        context.lineWidth = 2;
+        context.fillStyle = 'black';
         lineMatch.matchingPoints.forEach((pair) => {
+            // Draws line between each pair of points.
             context.beginPath();
             context.moveTo(pair[0][0], pair[0][1]);
             context.lineTo(pair[1][0], pair[1][1]);
             context.stroke();
+
+            // Draws circle at each point.
             pair.forEach((point) => {
                 context.beginPath();
                 context.arc(point[0], point[1], 2, 0, Math.PI * 2);
@@ -81,8 +88,6 @@ draw();
 
 let prevX;
 let prevY;
-
-
 
 canvas.addEventListener('mousedown', (e) => {
     const rect = canvas.getBoundingClientRect();
