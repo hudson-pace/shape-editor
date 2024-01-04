@@ -217,13 +217,14 @@ canvas.addEventListener('wheel', (e) => {
     e.preventDefault();
     if (dragging) {
         lineMatch = undefined;
-        if (e.buttons === 1) {
+        if (e.buttons === 1) { // left mouse button
+            const rotationDivisor = e.shiftKey ? 64 : 16; // More precise rotation when shift is held.
             if (e.deltaY < 0) {
-                shapeUtils.updateShapeGroupRotation(selection, Math.PI / 16);
+                shapeUtils.updateShapeGroupRotation(selection, Math.PI / rotationDivisor);
             } else {
-                shapeUtils.updateShapeGroupRotation(selection, -1 * Math.PI / 16);
+                shapeUtils.updateShapeGroupRotation(selection, -1 * Math.PI / rotationDivisor);
             }
-        } else if (e.buttons === 2) {
+        } else if (e.buttons === 2) { // right mouse button
             if (e.deltaY < 0) {
                 shapeUtils.updateShapeGroupSize(selection, 1.1);
             } else {
