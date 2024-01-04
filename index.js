@@ -68,15 +68,19 @@ const draw = () => {
         context.strokeStyle = 'grey';
         context.lineWidth = 2;
         context.fillStyle = 'black';
-        lineMatch.matchingPoints.forEach((pair) => {
-            // Draws line between each pair of points.
-            context.beginPath();
-            context.moveTo(pair[0][0], pair[0][1]);
-            context.lineTo(pair[1][0], pair[1][1]);
-            context.stroke();
 
-            // Draws circle at each point.
-            pair.forEach((point) => {
+        const lines = lineMatch.lines;
+        // Draws line between each pair of points.
+        context.beginPath();
+        context.moveTo(lines[0][0][0], lines[0][0][1]);
+        context.lineTo(lines[1][0][0], lines[1][0][1]);
+        context.moveTo(lines[0][1][0], lines[0][1][1]);
+        context.lineTo(lines[1][1][0], lines[1][1][1]);
+        context.stroke();
+
+        // Draws circle at each point.
+        lines.forEach((line) => {
+            line.forEach((point) => {
                 context.beginPath();
                 context.arc(point[0], point[1], 2, 0, Math.PI * 2);
                 context.fill();
@@ -193,11 +197,9 @@ canvas.addEventListener('mousemove', (e) => {
             for (let i = 0; i < shapes.length; i++) {
                 const shape = shapes[i];
                 if (shape !== selection[0] && selection[0] !== undefined) {
-                    lineMatch = shapeUtils.findMatchingLine(selection[0], shape, snapTolerance);
-                    if (lineMatch.matchingPoints.length > 0) {
+                    lineMatch = shapeUtils.findNearestLinesWithinTolerance(selection[0], shape, snapTolerance);
+                    if (lineMatch !== undefined) {
                         break;
-                    } else {
-                        lineMatch = undefined;
                     }
                 }
             }

@@ -87,43 +87,37 @@ const distanceBetweenPoints = (p1, p2) => {
     return Math.sqrt(Math.pow(p1[0] - p2[0], 2) + Math.pow(p1[1] - p2[1], 2));
 }
 
-
 const getDifferenceBetweenLines = (l1, l2) => {
     return distanceBetweenPoints(l1[0], l2[0]) + distanceBetweenPoints(l1[1], l2[1]);
 }
 
-const getUniquePointPairsFromLinePairs = (linePairs) => {
-    const pointPairs = [];
-    linePairs.forEach((linePair) => {
-        if (!pointPairs.find((pp) => pp[0] === linePair[0][0])) {
-            pointPairs.push([linePair[0][0], linePair[1][0]]);
-        }
-        if (!pointPairs.find((pp) => pp[0] === linePair[0][1])) {
-            pointPairs.push([linePair[0][1], linePair[1][1]]);
-        }
-    });
-    return pointPairs;
-}
+// Given 2 shapes, find a matching line between them. That is, a line where the sum of distances between the 2 points is below the given tolerance.
+const findNearestLinesWithinTolerance = (shape1, shape2, tolerance) => {
+    let minDifference;
+    let minLines;
+    shape1.lines.forEach((l1) => {
+        shape2.lines.forEach((l2) => {
 
-const findMatchingLine = (shape, shape2, snapTolerance) => {
-    const matchingLines = [];
-    for (let i = 0; i < shape.lines.length; i++) {
-        const l1 = shape.lines[i];
-        const l2 = shape2.lines.find((l) => getDifferenceBetweenLines(l, l1) < snapTolerance);
-        if (l2) {
-            matchingLines.push([l1, l2]);
-        } else {
-            const l3 = shape2.lines.find((l) => getDifferenceBetweenLines([l[1], l[0]], l1) < snapTolerance)
-            if (l3) {
-                matchingLines.push([l1, [l3[1], l3[0]]]);
+            // Check it both ways. Have to make sure lines are in the right order so they're drawn correctly.
+            const difference = getDifferenceBetweenLines(l1, l2);
+            if (minDifference === undefined || difference < minDifference) {
+                minDifference = difference;
+                minLines = [l1, l2];
             }
+            const difference2 = getDifferenceBetweenLines(l1, [l2[1], l2[0]]);
+            if (minDifference === undefined || difference2 < minDifference) {
+                minDifference = difference2;
+                minLines = [l1, [l2[1], l2[0]]];
+            }
+        });
+    });
+    if (minDifference !== undefined && minDifference < tolerance) {
+        return {
+            shapes: [shape1, shape2],
+            lines: minLines,
         }
     }
-    return {
-        shapes: [shape, shape2],
-        matchingLines,
-        matchingPoints: getUniquePointPairsFromLinePairs(matchingLines)
-    }
+    return undefined;
 }
 
 const moveToFront = (shape, shapes) => {
@@ -133,8 +127,8 @@ const moveToFront = (shape, shapes) => {
 }
 
 const snapLine = (lineMatch) => {
-    const l1 = lineMatch.matchingLines[0][1];
-    const l2 = lineMatch.matchingLines[0][0];
+    const l1 = lineMatch.lines[1];
+    const l2 = lineMatch.lines[0];
     const shape = lineMatch.shapes[0];
     
     const sizeMult = distanceBetweenPoints(l1[0], l1[1]) / distanceBetweenPoints(l2[0], l2[1]);
@@ -391,13 +385,13 @@ const shapeUtils = {
     toggleHighlight,
     moveToFront,
     shapeContainsPoint,
-    findMatchingLine,
     removeSubShape,
     getSubShape,
     duplicateShape,
     fillShapesFromInputData,
     getCenterOfShapeGroup,
     createPath,
+    findNearestLinesWithinTolerance,
 }
 
 export default shapeUtils;
