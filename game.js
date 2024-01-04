@@ -171,6 +171,7 @@ const resetBoard = () => {
     ss.exposed = false;
     ss.flagged = false;
   });
+  draw();
 }
 
 const placeMines = (startingTile) => {
