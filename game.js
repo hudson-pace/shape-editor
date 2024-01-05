@@ -3,6 +3,8 @@ import canvasUtils from './canvasUtils.js';
 import gameUtils from './gameUtils.js';
 import autoplay from './autoplay.js';
 
+const autoplayDelay = 100;
+
 fetch('./defaultGames.json')
   .then((res) => res.json())
   .then((json) => {
@@ -52,13 +54,13 @@ const startAutoplay = () => {
       if (firstClick) {
         takeTurn([getRandomTile()], [], []);
       } else {
-        const { clickTargets, flagTargets } = autoplay(getSubShapeList());
-        takeTurn(clickTargets, flagTargets, []);
+        const { clickTargets, flagTargets } = autoplay(getSubShapeList(), getRemainingFlagCount);
+        autoplayTakeTurn(clickTargets, flagTargets);
       }
     } else {
       resetBoard();
     }
-  }, 1000)
+  }, autoplayDelay)
 }
 const stopAutoplay = () => {
   clearInterval(autoplayInterval);
@@ -68,6 +70,10 @@ let flagCount;
 let mineCount;
 let gameWon;
 let gameLost;
+
+const getRemainingFlagCount = () => {
+  return mineCount - flagCount;
+}
 
 const canvas = document.querySelector('#game-container');
 canvas.width = 1500;
@@ -117,7 +123,7 @@ const draw = () => {
     });
   });
   context.textAlign = 'start';
-  context.fillText(`Flags: ${mineCount - flagCount}`, 10, 20);
+  context.fillText(`Flags: ${getRemainingFlagCount()}`, 10, 20);
   if (gameWon) {
     context.fillStyle = 'green';
     context.fillText('You Win.', 10, 50);
@@ -286,6 +292,12 @@ const takeTurn = (clickTargets, flagTargets, revealTargets) => {
   draw();
 }
 
+const autoplayTakeTurn = (clickTargets, flagTargets) => {
+  takeTurn(clickTargets, flagTargets, []);
+  revealAll();
+  draw();
+}
+
 const leftClickOnTile = (tile) => {
   if (!tile.flagged) {
     if (firstClick) {
@@ -313,9 +325,15 @@ const leftAndRightClickOnTile = (tile) => {
     }
   }
 }
+const revealAll = () => {
+  const tiles = gameUtils.getClickable(getSubShapeList());
+  tiles.forEach((tile) => {
+    leftAndRightClickOnTile(tile);
+  });
+}
 
 canvas.addEventListener('mousedown', (e) => {
-  if (gameWon || gameLost || isAutoplaying) {
+  if (gameWon || gameLost) { // || isAutoplaying) {
     return;
   }
   const rect = canvas.getBoundingClientRect();

@@ -1,121 +1,205 @@
 import gameUtils from './gameUtils.js';
 
-const getClickTargets = (tiles) => {
-  const clickTargets = new Set();
-  tiles.forEach((tile) => {
-      if (tile.exposed && tile.value === gameUtils.countNeighboringFlags(tile)) {
-        tile.neighbors.forEach((n) => {
-          if (!n.exposed && !n.flagged) {
-            clickTargets.add(n);
-          }
-        });
-      }
-  });
-  return clickTargets;
+
+const getFlagCountRequirement = (tiles, flagCount) => {
+    return {
+        tiles: tiles.filter((t) => !t.flagged && !t.exposed), // All unflagged and unexposed tiles
+        count: flagCount // The number of remaining flags
+    }
 }
 
-// Accepts an array of arrays. Returns common elements.
-const getCommonElements = (arrays) => {
-  let common = arrays[0];
-  for (let i = 1; i < arrays.length; i++) {
-      common = common.filter((el) => arrays[i].includes(el));
-  }
-  return common;
+const constraintsAreEqual = (c1, c2) => {
+    if (c1.count !== c2.count || c1.tiles.length !== c2.tiles.length) {
+        return false;
+    }
+    for (let i = 0; i < c1.tiles.length; i++) {
+        if (c1.tiles[i] !== c2.tiles[i]) {
+            return false;
+        }
+    }
+    return true;
+};
+
+// Constraints targeting the same tiles with the same count are redundant. Return a list with no repeats.
+const reduceConstraints = (constraints) => {
+    const uniqueConstraints = [];
+    constraints.forEach((constraint) => {
+        if (!uniqueConstraints.find((c) => constraintsAreEqual(c, constraint))) {
+            uniqueConstraints.push(constraint);
+        }
+    });
+    return uniqueConstraints;
 }
 
-const getSubsets = (arr, arrays) => {
-  return arrays.filter((a) => a.tiles.every((el) => arr.includes(el)));
-}
+const autoplay = (tiles, getFlagCount) => {
+    let constraints = gameUtils.getFrontier(tiles).map((tile) => {
+        return {
+            tiles: gameUtils.getUnexposedUnflaggedNeighbors(tile).sort((a, b) => a.id < b.id),
+            count: tile.value - gameUtils.countNeighboringFlags(tile),
+        }
+    });
 
-const autoplay = (tiles) => {
-  const clickTargets = getClickTargets(tiles);
-  const flagTargets = new Set();
+    const unreduced = constraints.length;
+    constraints = reduceConstraints(constraints);
+    console.log(`${unreduced} -> ${constraints.length}`);
 
-  const requirements = gameUtils.getFrontier(tiles).map((tile) => {
-      return {
-          tiles: gameUtils.getUnexposedUnflaggedNeighbors(tile),
-          count: tile.value - gameUtils.countNeighboringFlags(tile),
-      }
-  });
+    const clickTargets = new Set();
+    const flagTargets = new Set();
 
-  requirements.forEach((req) => {
-      if (req.count === req.tiles.length) {
-          flagTargets.add(...req.tiles);
-      } else {
-          const subsets = getSubsets(req.tiles, requirements);
-          let frontier = [...subsets]
-          while (frontier.length > 0) {
-              const oldFrontier = [...frontier];
-              const newFrontier = [];
-              oldFrontier.forEach((s) => {
-                  const complement = [...oldFrontier, ...subsets].find((s2) => getCommonElements([s.tiles, s2.tiles]).length === 0);
-                  if (complement) {
-                      const newSubset = {
-                          tiles: [...s.tiles, ...complement.tiles],
-                          count: s.count + complement.count
-                      };
-                      subsets.push(newSubset);
-                      newFrontier.push(newSubset);
-                  }
-              });
-              frontier = newFrontier;
-          }
-          const relevantSubsets = subsets.filter((s) => s.count === req.count);
-          relevantSubsets.forEach((s) => {
-              const what = req.tiles.filter((t) => !s.tiles.includes(t));
-              if (what.length > 0) {
-                  clickTargets.add(...what);
-              }
-          });
-      }
-  });
+    constraints.forEach((constraint) => {
+        const relevantConstraints = findRelevantConstraints(constraints, constraint);
+        const viableStrings = getViableStrings(generateBinaryStrings(constraint.tiles.length, constraint.count), relevantConstraints, constraint);
 
-  requirements.forEach((req) => {
-      const relevantReqs = requirements.filter((r) => getCommonElements([req.tiles, r.tiles]).length > 0);
-      const combinationStrings = generateBinaryStrings(req.tiles.length, req.count);
-      const combinations = [];
-      combinationStrings.forEach((s) => {
-          const combination = [];
-          for (let i = 0; i < s.length; i++) {
-              if (s.charAt(i) === '1') {
-                  combination.push(req.tiles[i]);
-              }
-          }
-          combinations.push(combination);
-      });
+        if (viableStrings.length !== 0) {
+            for (let i = 0; i < constraint.tiles.length; i++) {
+                let allMine = true;
+                let allSafe = true;
+                viableStrings.forEach((s) => {
+                    if (s.charAt(i) === '1') {
+                        allSafe = false;
+                    } else if (s.charAt(i) === '0') {
+                        allMine = false;
+                    }
+                });
+                if (allMine) {
+                    flagTargets.add(constraint.tiles[i]);
+                } else if (allSafe) {
+                    clickTargets.add(constraint.tiles[i]);
+                }
+            }
+        }
+    });
 
-      const validCombinations = combinations.filter((c) => {
-          for (let i = 0; i < relevantReqs.length; i++) {
-              if (getCommonElements([c, relevantReqs[i].tiles]).length > relevantReqs[i].count) {
-                  return false;
-              }
-          }
-          return true;
-      });
-      const commonElements = getCommonElements(validCombinations);
-      if (commonElements.length > 0) {
-          flagTargets.add(...commonElements);
-      }
-  });
-  return {
-      clickTargets,
-      flagTargets,
-  }
+    if (clickTargets.size === 0 && flagTargets.size === 0) {
+        if (minimumMinesToFillConstraints(constraints) === getFlagCount()) {
+            const frontierTiles = getAllTilesFromConstraints(constraints);
+            for (let i = 0; i < tiles.length; i++) {
+                if (!frontierTiles.includes(tiles[i])) {
+                    clickTargets.add(tiles[i]);
+                }
+            }
+        }
+    }
+    return {
+        clickTargets,
+        flagTargets,
+    }
 }
 export default autoplay;
 
+// Provided a list of binary strings (where a 1 indicates a mine), and a list of constraints,
+// Return the strings which can fulfill every constraint.
+const getViableStrings = (binaryStrings, constraints, constraint, firstOnly = false) => {
+    const viableStrings = [];
+    for (let j = 0; j < binaryStrings.length; j++) {
+        const s = binaryStrings[j];
+        const mines = [];
+        const safe = [];
+        for (let i = 0; i < s.length; i++) {
+            if (s.charAt(i) === '1') {
+                mines.push(constraint.tiles[i]);
+            } else {
+                safe.push(constraint.tiles[i]);
+            }
+        }
+        let viable = true;
+        for (let i = 0; i < constraints.length; i++) {
+            if (!fitsConstraint(constraints[i], mines, safe)) {
+                viable = false;
+                break;
+            }
+        }
+        if (viable) {
+            if (firstOnly) {
+                return [s];
+            } else {
+            }
+            viableStrings.push(s);
+        }
+    }
+    return viableStrings;
+}
+
+// Given a list of constraints and a specific constraint, return a list of all relevant constraints.
+// Specifically, all constraints which contain at least one tile contained in the given constraint.
+// ie, if constraint deals with tiles (a,b,c), return constraints dealing with (a,b), (b), (c,d,e), etc.
+const findRelevantConstraints = (constraints, constraint) => {
+    const relevantConstraints = [];
+    constraints.forEach((c) => {
+        if (c.tiles.find((t) => constraint.tiles.find((tile) => t === tile))) {
+            relevantConstraints.push(c);
+        }
+    });
+    return relevantConstraints;
+}
+
+// Provides a constraint, and lists of tiles that are mines and safe. Tests if those lists fit the constraint.
+// Returns false if that combination of tiles would necessarily mean too many or too few mines.
+const fitsConstraint = (constraint, mines, safe) => {
+    let mineCount = 0;
+    let safeCount = 0;
+    let undecidedCount = 0;
+    constraint.tiles.forEach((tile) => {
+        if (mines.includes(tile)) {
+            mineCount++;
+        } else if (safe.includes(tile)) {
+            safeCount++;
+        } else {
+            undecidedCount++;
+        }
+    });
+    // Undecided tiles can go either way. If all undecided are mines and the count is too low,
+    // or if all undecided are safe and the count is too high, the constraint is violated.
+    if (undecidedCount + mineCount < constraint.count || mineCount > constraint.count) {
+        return false;
+    }
+    return true;
+}
 
 
 
 const generateBinaryStrings = (length, oneCount) => {
-const total = Math.pow(2, length);
-const strings = [];
-for (let i = 0; i < total; i++) {
-  const str = i.toString(2);
-  if (str.split('1').length === oneCount + 1) {
-    const pad = length - str.length;
-    strings.push('0'.repeat(pad).concat(str));
-  }
+    if (length === 0) {
+        return '';
+    }
+    const total = Math.pow(2, length);
+    const strings = [];
+    for (let i = 0; i < total; i++) {
+        const str = i.toString(2);
+        if (str.split('1').length === oneCount + 1) {
+            const pad = length - str.length;
+            strings.push('0'.repeat(pad).concat(str));
+        }
+    }
+    return strings;
 }
-return strings;
+
+const getAllTilesFromConstraints = (constraints) => {
+    const tiles = [];
+    constraints.forEach((c) => {
+        c.tiles.forEach((t) => {
+            if (!tiles.includes(t)) {
+                tiles.push(t);
+            }
+        });
+    });
+    return tiles;
+}
+const minimumMinesToFillConstraints = (constraints) => {
+    const tiles = getAllTilesFromConstraints(constraints).sort((a, b) => a.id < b.id);
+    for (let i = 0; i <= tiles.length; i++) {
+        if (getViableStrings(generateBinaryStrings(tiles.length, i), constraints, { tiles }, true).length !== 0) {
+            return i;
+        }
+    }
+    return -1;
+}
+const maximumMinesToFillConstraints = (constraints) => {
+    const tiles = getAllTilesFromConstraints(constraints).sort((a, b) => a.id < b.id);
+    for (let i = tiles.length; i >= 0; i--) {
+        if (getViableStrings(generateBinaryStrings(tiles.length, i), constraints, { tiles }, true).length !== 0) {
+            return i;
+        }
+    }
+    return -1;
 }
