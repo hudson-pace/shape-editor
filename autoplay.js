@@ -8,41 +8,47 @@ const getFlagCountRequirement = (tiles, flagCount) => {
     }
 }
 
+const constraintsAreEqual = (c1, c2) => {
+    if (c1.count !== c2.count || c1.tiles.length !== c2.tiles.length) {
+        return false;
+    }
+    for (let i = 0; i < c1.tiles.length; i++) {
+        if (c1.tiles[i] !== c2.tiles[i]) {
+            return false;
+        }
+    }
+    return true;
+};
+
+// Constraints targeting the same tiles with the same count are redundant. Return a list with no repeats.
+const reduceConstraints = (constraints) => {
+    const uniqueConstraints = [];
+    constraints.forEach((constraint) => {
+        if (!uniqueConstraints.find((c) => constraintsAreEqual(c, constraint))) {
+            uniqueConstraints.push(constraint);
+        }
+    });
+    return uniqueConstraints;
+}
+
 const autoplay = (tiles, getFlagCount) => {
-    const constraints = gameUtils.getFrontier(tiles).map((tile) => {
+    let constraints = gameUtils.getFrontier(tiles).map((tile) => {
         return {
-            tiles: gameUtils.getUnexposedUnflaggedNeighbors(tile),
+            tiles: gameUtils.getUnexposedUnflaggedNeighbors(tile).sort((a, b) => a.id < b.id),
             count: tile.value - gameUtils.countNeighboringFlags(tile),
         }
     });
+
+    const unreduced = constraints.length;
+    constraints = reduceConstraints(constraints);
+    console.log(`${unreduced} -> ${constraints.length}`);
 
     const clickTargets = new Set();
     const flagTargets = new Set();
 
     constraints.forEach((constraint) => {
         const relevantConstraints = findRelevantConstraints(constraints, constraint);
-        const viableStrings = [];
-        generateBinaryStrings(constraint.tiles.length, constraint.count).forEach((s) => {
-            const mines = [];
-            const safe = [];
-            for (let i = 0; i < s.length; i++) {
-                if (s.charAt(i) === '1') {
-                    mines.push(constraint.tiles[i]);
-                } else {
-                    safe.push(constraint.tiles[i]);
-                }
-            }
-            let viable = true;
-            for (let i = 0; i < relevantConstraints.length; i++) {
-                if (!fitsConstraint(relevantConstraints[i], mines, safe)) {
-                    viable = false;
-                    break;
-                }
-            }
-            if (viable) {
-                viableStrings.push(s);
-            }
-        });
+        const viableStrings = getViableStrings(generateBinaryStrings(constraint.tiles.length, constraint.count), relevantConstraints, constraint);
 
         if (viableStrings.length !== 0) {
             for (let i = 0; i < constraint.tiles.length; i++) {
@@ -64,12 +70,55 @@ const autoplay = (tiles, getFlagCount) => {
         }
     });
 
+    if (clickTargets.size === 0 && flagTargets.size === 0) {
+        if (minimumMinesToFillConstraints(constraints) === getFlagCount()) {
+            const frontierTiles = getAllTilesFromConstraints(constraints);
+            for (let i = 0; i < tiles.length; i++) {
+                if (!frontierTiles.includes(tiles[i])) {
+                    clickTargets.add(tiles[i]);
+                }
+            }
+        }
+    }
     return {
         clickTargets,
         flagTargets,
     }
 }
 export default autoplay;
+
+// Provided a list of binary strings (where a 1 indicates a mine), and a list of constraints,
+// Return the strings which can fulfill every constraint.
+const getViableStrings = (binaryStrings, constraints, constraint, firstOnly = false) => {
+    const viableStrings = [];
+    for (let j = 0; j < binaryStrings.length; j++) {
+        const s = binaryStrings[j];
+        const mines = [];
+        const safe = [];
+        for (let i = 0; i < s.length; i++) {
+            if (s.charAt(i) === '1') {
+                mines.push(constraint.tiles[i]);
+            } else {
+                safe.push(constraint.tiles[i]);
+            }
+        }
+        let viable = true;
+        for (let i = 0; i < constraints.length; i++) {
+            if (!fitsConstraint(constraints[i], mines, safe)) {
+                viable = false;
+                break;
+            }
+        }
+        if (viable) {
+            if (firstOnly) {
+                return [s];
+            } else {
+            }
+            viableStrings.push(s);
+        }
+    }
+    return viableStrings;
+}
 
 // Given a list of constraints and a specific constraint, return a list of all relevant constraints.
 // Specifically, all constraints which contain at least one tile contained in the given constraint.
@@ -110,6 +159,9 @@ const fitsConstraint = (constraint, mines, safe) => {
 
 
 const generateBinaryStrings = (length, oneCount) => {
+    if (length === 0) {
+        return '';
+    }
     const total = Math.pow(2, length);
     const strings = [];
     for (let i = 0; i < total; i++) {
@@ -120,4 +172,34 @@ const generateBinaryStrings = (length, oneCount) => {
         }
     }
     return strings;
+}
+
+const getAllTilesFromConstraints = (constraints) => {
+    const tiles = [];
+    constraints.forEach((c) => {
+        c.tiles.forEach((t) => {
+            if (!tiles.includes(t)) {
+                tiles.push(t);
+            }
+        });
+    });
+    return tiles;
+}
+const minimumMinesToFillConstraints = (constraints) => {
+    const tiles = getAllTilesFromConstraints(constraints).sort((a, b) => a.id < b.id);
+    for (let i = 0; i <= tiles.length; i++) {
+        if (getViableStrings(generateBinaryStrings(tiles.length, i), constraints, { tiles }, true).length !== 0) {
+            return i;
+        }
+    }
+    return -1;
+}
+const maximumMinesToFillConstraints = (constraints) => {
+    const tiles = getAllTilesFromConstraints(constraints).sort((a, b) => a.id < b.id);
+    for (let i = tiles.length; i >= 0; i--) {
+        if (getViableStrings(generateBinaryStrings(tiles.length, i), constraints, { tiles }, true).length !== 0) {
+            return i;
+        }
+    }
+    return -1;
 }
