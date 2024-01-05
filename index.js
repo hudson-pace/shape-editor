@@ -211,8 +211,13 @@ canvas.addEventListener('mouseup', () => {
     if (dragging) {
         if (lineMatch !== undefined) {
             if (shapeUtils.snapLine(lineMatch, context)) {
+                // If snap is successful, remove that shape from list of shapes and current selection.
                 const index = shapes.findIndex(((s) => s === lineMatch.shapes[0]));
                 shapes.splice(index, 1);
+                const highlightIndex = selection.findIndex(((s) => s === lineMatch.shapes[0]));
+                if (highlightIndex !== -1) {
+                    selection.splice(highlightIndex, 1);
+                }
             }
         }
         dragging = false;
