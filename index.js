@@ -210,9 +210,10 @@ canvas.addEventListener('mousemove', (e) => {
 canvas.addEventListener('mouseup', () => {
     if (dragging) {
         if (lineMatch !== undefined) {
-            shapeUtils.snapLine(lineMatch);
-            const index = shapes.findIndex(((s) => s === lineMatch.shapes[0]));
-            shapes.splice(index, 1);
+            if (shapeUtils.snapLine(lineMatch, context)) {
+                const index = shapes.findIndex(((s) => s === lineMatch.shapes[0]));
+                shapes.splice(index, 1);
+            }
         }
         dragging = false;
         draggingBox = false;

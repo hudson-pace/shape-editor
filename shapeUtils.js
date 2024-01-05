@@ -126,7 +126,41 @@ const moveToFront = (shape, shapes) => {
     shapes.push(shape);
 }
 
-const snapLine = (lineMatch) => {
+// Given a line and a number of points, return that many evenly spaced points along the line (not including ends). 
+const getPointsOnLine = (line, pointCount) => {
+    const start = line[0];
+    const end = line[1];
+    const rise = end[1] - start[1];
+    const run = end[0] - start[0];
+    const points = [];
+    for (let i = 0; i < pointCount; i++) {
+        const newPoint = {};
+        newPoint[0] = start[0] + ((i + 1) * (run / (pointCount + 1)));
+        newPoint[1] = start[1] + ((i + 1) * (rise / (pointCount + 1)));
+        points.push(newPoint);
+    }
+    return points;
+}
+
+// Tests to make sure combining 2 shapes would have a valid result. Specifically, tries to avoid a self-intersecting shape. The
+// math to check that rigorously seems overkill here. Instead, it takes a few sample points on the newly added lines, and checks
+// if they're inside the existing shape.
+const newShapeIsValid = (shape1, shape2, context) => {
+    const perimeter1 = shape1.lines;
+    const perimeter2 = shape2.lines;
+    const newLines = perimeter1.filter((l) => !perimeter2.find((line) => getDifferenceBetweenLines(l, line) < .1 || getDifferenceBetweenLines(l, line.toReversed()) < .1));
+    for (let i = 0; i < newLines.length; i++) {
+        const line = newLines[i];
+        const testPoints = getPointsOnLine(line, 3);
+        for (let j = 0; j < testPoints.length; j++) {
+            if (shapeContainsPoint(context, shape2, testPoints[j][0], testPoints[j][1])) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+const snapLine = (lineMatch, context) => {
     const l1 = lineMatch.lines[1];
     const l2 = lineMatch.lines[0];
     const shape = lineMatch.shapes[0];
@@ -143,6 +177,10 @@ const snapLine = (lineMatch) => {
 
     const outerShape = lineMatch.shapes[1];
 
+    const val = newShapeIsValid(shape, outerShape, context);
+    if (!val) {
+        return false;
+    }
     shape.subShapes.forEach((subShape) => {
         subShape.points.forEach((point, i) => {
             const index = outerShape.points.findIndex((p) => distanceBetweenPoints(point, p) < tolerance);
@@ -154,6 +192,7 @@ const snapLine = (lineMatch) => {
     });
     outerShape.subShapes.push(...shape.subShapes);
     recalculatePointsAndLines(outerShape);
+    return true;
 }
 
 const recalculatePointsAndLines = (shape) => {
@@ -312,10 +351,10 @@ const getCenterOfShapeGroup = (shapeGroup) => {
     return [(right + left) / 2, (bottom + top) / 2];
 }
 
-const reduceLinesToPerimeter = (shape) => {
+const getUniqueLines = (lines) => {
     const uniqueLines = [];
     const repeatedLines = [];
-    shape.lines.forEach((line) => {
+    lines.forEach((line) => {
         if (!repeatedLines.find((l) => (l[0] === line[0] && l[1] === line[1]) || (l[1] === line[0] && l[0] === line[1]))) {
             const index = uniqueLines.findIndex((l) => (l[0] === line[0] && l[1] === line[1]) || (l[1] === line[0] && l[0] === line[1]));
             if (index === -1) {
@@ -325,8 +364,12 @@ const reduceLinesToPerimeter = (shape) => {
                 repeatedLines.push(line);
             }
         }
-    })
+    });
+    return uniqueLines;
+}
 
+const reduceLinesToPerimeter = (shape) => {
+    const uniqueLines = getUniqueLines(shape.lines);
     shape.lines = orderLines(uniqueLines);
     shape.path = createPath(shape);
 }
