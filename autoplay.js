@@ -39,9 +39,7 @@ const autoplay = (tiles, getFlagCount) => {
         }
     });
 
-    const unreduced = constraints.length;
     constraints = reduceConstraints(constraints);
-    console.log(`${unreduced} -> ${constraints.length}`);
 
     const clickTargets = new Set();
     const flagTargets = new Set();
