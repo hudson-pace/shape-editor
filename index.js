@@ -50,8 +50,10 @@ const drawShape = (shape) => {
 const shapes = [];
 
 const draw = () => {
+    // Clears the canvas.
     canvasUtils.drawCanvas(canvas, context);
 
+    // Draws translucent blue box showing current selection.
     if (draggingBox) {
         canvasUtils.drawBox(context, 'rgba(0, 0, 255, 0.1)', 'rgba(0, 0, 255, 0.3)', boxStart, boxEnd);
     }
@@ -60,16 +62,25 @@ const draw = () => {
         drawShape(shape);
     });
 
-    context.strokeStyle = 'grey';
-    context.lineWidth = 2;
-    context.fillStyle = 'black';
+    // When dragging shapes, and releasing will cause them to snap together.
+    // Draws circles at the aligned points, and lines between them.
     if (lineMatch !== undefined) {
-        lineMatch.matchingPoints.forEach((pair) => {
-            context.beginPath();
-            context.moveTo(pair[0][0], pair[0][1]);
-            context.lineTo(pair[1][0], pair[1][1]);
-            context.stroke();
-            pair.forEach((point) => {
+        context.strokeStyle = 'grey';
+        context.lineWidth = 2;
+        context.fillStyle = 'black';
+
+        const lines = lineMatch.lines;
+        // Draws line between each pair of points.
+        context.beginPath();
+        context.moveTo(lines[0][0][0], lines[0][0][1]);
+        context.lineTo(lines[1][0][0], lines[1][0][1]);
+        context.moveTo(lines[0][1][0], lines[0][1][1]);
+        context.lineTo(lines[1][1][0], lines[1][1][1]);
+        context.stroke();
+
+        // Draws circle at each point.
+        lines.forEach((line) => {
+            line.forEach((point) => {
                 context.beginPath();
                 context.arc(point[0], point[1], 2, 0, Math.PI * 2);
                 context.fill();
@@ -81,8 +92,6 @@ draw();
 
 let prevX;
 let prevY;
-
-
 
 canvas.addEventListener('mousedown', (e) => {
     const rect = canvas.getBoundingClientRect();
@@ -188,11 +197,9 @@ canvas.addEventListener('mousemove', (e) => {
             for (let i = 0; i < shapes.length; i++) {
                 const shape = shapes[i];
                 if (shape !== selection[0] && selection[0] !== undefined) {
-                    lineMatch = shapeUtils.findMatchingLine(selection[0], shape, snapTolerance);
-                    if (lineMatch.matchingPoints.length > 0) {
+                    lineMatch = shapeUtils.findNearestLinesWithinTolerance(selection[0], shape, snapTolerance);
+                    if (lineMatch !== undefined) {
                         break;
-                    } else {
-                        lineMatch = undefined;
                     }
                 }
             }
@@ -203,9 +210,15 @@ canvas.addEventListener('mousemove', (e) => {
 canvas.addEventListener('mouseup', () => {
     if (dragging) {
         if (lineMatch !== undefined) {
-            shapeUtils.snapLine(lineMatch);
-            const index = shapes.findIndex(((s) => s === lineMatch.shapes[0]));
-            shapes.splice(index, 1);
+            if (shapeUtils.snapLine(lineMatch, context)) {
+                // If snap is successful, remove that shape from list of shapes and current selection.
+                const index = shapes.findIndex(((s) => s === lineMatch.shapes[0]));
+                shapes.splice(index, 1);
+                const highlightIndex = selection.findIndex(((s) => s === lineMatch.shapes[0]));
+                if (highlightIndex !== -1) {
+                    selection.splice(highlightIndex, 1);
+                }
+            }
         }
         dragging = false;
         draggingBox = false;
@@ -217,13 +230,14 @@ canvas.addEventListener('wheel', (e) => {
     e.preventDefault();
     if (dragging) {
         lineMatch = undefined;
-        if (e.buttons === 1) {
+        if (e.buttons === 1) { // left mouse button
+            const rotationDivisor = e.shiftKey ? 64 : 16; // More precise rotation when shift is held.
             if (e.deltaY < 0) {
-                shapeUtils.updateShapeGroupRotation(selection, Math.PI / 16);
+                shapeUtils.updateShapeGroupRotation(selection, Math.PI / rotationDivisor);
             } else {
-                shapeUtils.updateShapeGroupRotation(selection, -1 * Math.PI / 16);
+                shapeUtils.updateShapeGroupRotation(selection, -1 * Math.PI / rotationDivisor);
             }
-        } else if (e.buttons === 2) {
+        } else if (e.buttons === 2) { // right mouse button
             if (e.deltaY < 0) {
                 shapeUtils.updateShapeGroupSize(selection, 1.1);
             } else {
