@@ -3,7 +3,7 @@ import canvasUtils from './canvasUtils.js';
 import gameUtils from './gameUtils.js';
 import autoplay from './autoplay.js';
 
-const autoplayDelay = 100;
+const autoplayDelay = 10;
 
 fetch('./defaultGames.json')
   .then((res) => res.json())
@@ -298,10 +298,41 @@ const autoplayTakeTurn = (clickTargets, flagTargets) => {
   draw();
 }
 
+const generateBoard = (firstTile, guaranteedSolvable) => {
+  if (guaranteedSolvable) {
+    let solvable = false;
+    const tiles = getSubShapeList();
+    while (!solvable) {
+      resetBoard();
+      placeMines(firstTile);
+      firstClick = false;
+      takeTurn([firstTile], [], []);
+      
+      let { clickTargets, flagTargets } = autoplay(tiles, getRemainingFlagCount);
+      while (clickTargets.size > 0 || flagTargets.size > 0) {
+        autoplayTakeTurn(clickTargets, flagTargets);
+        ({ clickTargets, flagTargets } = autoplay(tiles, getRemainingFlagCount));
+      }
+      autoplayTakeTurn(clickTargets, flagTargets); // One last time with empty targets, to make sure tiles are revealed and win status is checked.
+      solvable = gameWon;
+    }
+    tiles.forEach((tile) => {
+      tile.exposed = false;
+      tile.flagged = false;
+    });
+    gameWon = false;
+    gameLost = false;
+    flagCount = 0;
+  } else {
+    placeMines(firstTile);
+  }
+}
+
+const guaranteedSolvableCheckbox = document.querySelector('#guaranteed-solvable-checkbox');
 const leftClickOnTile = (tile) => {
   if (!tile.flagged) {
     if (firstClick) {
-      placeMines(tile);
+      generateBoard(tile, guaranteedSolvableCheckbox.checked);
       firstClick = false;
     }
     showTile(tile);

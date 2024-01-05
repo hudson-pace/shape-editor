@@ -72,7 +72,7 @@ const autoplay = (tiles, getFlagCount) => {
         if (minimumMinesToFillConstraints(constraints) === getFlagCount()) {
             const frontierTiles = getAllTilesFromConstraints(constraints);
             for (let i = 0; i < tiles.length; i++) {
-                if (!frontierTiles.includes(tiles[i])) {
+                if (!tiles[i].exposed && !tiles[i].flagged && !frontierTiles.includes(tiles[i])) {
                     clickTargets.add(tiles[i]);
                 }
             }
