@@ -316,6 +316,8 @@ const generateBoard = (firstTile, guaranteedSolvable) => {
       autoplayTakeTurn(clickTargets, flagTargets); // One last time with empty targets, to make sure tiles are revealed and win status is checked.
       solvable = gameWon;
     }
+
+    
     tiles.forEach((tile) => {
       tile.exposed = false;
       tile.flagged = false;
