@@ -173,12 +173,18 @@ const snapLine = (lineMatch, context) => {
     const rot = getRotationBetweenLines(l1, l2);
     updatePoints(shape, center, 0, 0, 1, rot);
 
-    updatePoints(shape, center, l1[0][0] - l2[0][0], l1[0][1] - l2[0][1], 1, 0);
+    const dx = l1[0][0] - l2[0][0];
+    const dy = l1[0][1] - l2[0][1];
+    updatePoints(shape, center, dx, dy, 1, 0);
 
     const outerShape = lineMatch.shapes[1];
 
     const val = newShapeIsValid(shape, outerShape, context);
     if (!val) {
+        // updatePoints does transformation in different order, so has to call it separately.
+        updatePoints(shape, center, -dx, -dy, 1, 0);
+        updatePoints(shape, center, 0, 0, 1, -rot);
+        updatePoints(shape, center, 0, 0, 1 / sizeMult, 0);
         return false;
     }
     shape.subShapes.forEach((subShape) => {
